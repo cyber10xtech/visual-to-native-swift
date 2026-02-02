@@ -1,20 +1,39 @@
 import { useState } from "react";
-import { User, Mail, Lock, ArrowLeft } from "lucide-react";
+import { User, Mail, Lock, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const SignIn = () => {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement sign in logic
+    
+    if (!email || !password) {
+      toast.error("Please enter email and password");
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await signIn(email, password);
+    setLoading(false);
+
+    if (error) {
+      toast.error(error.message || "Failed to sign in");
+      return;
+    }
+
+    toast.success("Welcome back!");
     navigate("/dashboard");
   };
 
@@ -43,6 +62,7 @@ const SignIn = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-11 h-12 bg-muted/50 border-0 rounded-xl"
+                disabled={loading}
               />
             </div>
           </div>
@@ -58,6 +78,7 @@ const SignIn = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-11 h-12 bg-muted/50 border-0 rounded-xl"
+                disabled={loading}
               />
             </div>
           </div>
@@ -78,8 +99,19 @@ const SignIn = () => {
             </button>
           </div>
 
-          <Button type="submit" className="w-full h-12 bg-primary text-primary-foreground rounded-xl text-lg font-semibold">
-            Sign In
+          <Button 
+            type="submit" 
+            className="w-full h-12 bg-primary text-primary-foreground rounded-xl text-lg font-semibold"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Signing in...
+              </>
+            ) : (
+              "Sign In"
+            )}
           </Button>
         </form>
 

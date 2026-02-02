@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { 
   Camera, 
   MapPin, 
@@ -11,40 +10,57 @@ import {
   Zap,
   Settings,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { toast } from "sonner";
 
 const Profile = () => {
   const navigate = useNavigate();
-  
-  const profile = {
-    name: "Ozioma FM",
-    profession: "Master Electrician",
-    location: "Lagos, Nigeria",
-    phone: "+234 801 234 5678",
-    email: "ozioma@example.com",
-    bio: "Certified electrician with 10+ years of experience in residential and commercial electrical installations, repairs, and maintenance.",
-    rating: 4.9,
-    reviews: 156,
-    completedJobs: 234,
-    verified: true,
-    skills: ["Electrical Installation", "Wiring", "Circuit Breakers", "Solar Panels", "Generator Setup"],
-    dailyRate: "₦35,000",
-    contractRate: "₦250,000+",
+  const { user, signOut, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success("Signed out successfully");
+    navigate("/");
   };
+
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <p className="text-muted-foreground mb-4">Please sign in to view your profile</p>
+        <Button onClick={() => navigate("/sign-in")}>Sign In</Button>
+      </div>
+    );
+  }
 
   const menuItems = [
     { icon: Edit3, label: "Edit Profile", description: "Update your information" },
-    { icon: Shield, label: "Verification", description: "Manage your credentials", badge: "Verified" },
+    { icon: Shield, label: "Verification", description: "Manage your credentials", badge: profile.documents_uploaded ? "Verified" : undefined },
     { icon: Award, label: "Certifications", description: "Add professional certificates" },
     { icon: Zap, label: "Boost Profile", description: "Get more visibility", badge: "Pro" },
     { icon: Settings, label: "Settings", description: "App preferences" },
   ];
+
+  const getInitials = (name: string) => {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -57,7 +73,7 @@ const Profile = () => {
             <Avatar className="w-20 h-20 border-4 border-white/20">
               <AvatarImage src="/placeholder.svg" />
               <AvatarFallback className="bg-white text-primary text-xl font-bold">
-                OF
+                {getInitials(profile.full_name)}
               </AvatarFallback>
             </Avatar>
             <button className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
@@ -66,16 +82,16 @@ const Profile = () => {
           </div>
           <div className="flex-1 text-white">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold">{profile.name}</h1>
-              {profile.verified && (
+              <h1 className="text-xl font-bold">{profile.full_name}</h1>
+              {profile.documents_uploaded && (
                 <Shield className="w-5 h-5 text-success" />
               )}
             </div>
-            <p className="text-white/80 text-sm">{profile.profession}</p>
+            <p className="text-white/80 text-sm">{profile.profession || profile.account_type}</p>
             <div className="flex items-center gap-1 mt-1">
               <Star className="w-4 h-4 fill-warning text-warning" />
-              <span className="font-semibold">{profile.rating}</span>
-              <span className="text-white/70 text-sm">({profile.reviews} reviews)</span>
+              <span className="font-semibold">4.9</span>
+              <span className="text-white/70 text-sm">(0 reviews)</span>
             </div>
           </div>
         </div>
@@ -83,15 +99,15 @@ const Profile = () => {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mt-6">
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-white">{profile.completedJobs}</p>
+            <p className="text-2xl font-bold text-white">0</p>
             <p className="text-xs text-white/70">Completed</p>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-white">{profile.rating}</p>
+            <p className="text-2xl font-bold text-white">-</p>
             <p className="text-xs text-white/70">Rating</p>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-white">{profile.reviews}</p>
+            <p className="text-2xl font-bold text-white">0</p>
             <p className="text-xs text-white/70">Reviews</p>
           </div>
         </div>
@@ -101,55 +117,69 @@ const Profile = () => {
         {/* Contact Info */}
         <div className="bg-card rounded-xl border border-border p-4 space-y-3">
           <h2 className="font-semibold text-foreground">Contact Information</h2>
-          <div className="flex items-center gap-3 text-sm">
-            <MapPin className="w-4 h-4 text-muted-foreground" />
-            <span className="text-foreground">{profile.location}</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <Phone className="w-4 h-4 text-muted-foreground" />
-            <span className="text-foreground">{profile.phone}</span>
-          </div>
+          {profile.location && (
+            <div className="flex items-center gap-3 text-sm">
+              <MapPin className="w-4 h-4 text-muted-foreground" />
+              <span className="text-foreground">{profile.location}</span>
+            </div>
+          )}
+          {profile.phone_number && (
+            <div className="flex items-center gap-3 text-sm">
+              <Phone className="w-4 h-4 text-muted-foreground" />
+              <span className="text-foreground">{profile.phone_number}</span>
+            </div>
+          )}
           <div className="flex items-center gap-3 text-sm">
             <Mail className="w-4 h-4 text-muted-foreground" />
-            <span className="text-foreground">{profile.email}</span>
+            <span className="text-foreground">{user.email}</span>
           </div>
         </div>
 
         {/* Bio */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-foreground mb-2">About</h2>
-          <p className="text-sm text-muted-foreground">{profile.bio}</p>
-        </div>
+        {profile.bio && (
+          <div className="bg-card rounded-xl border border-border p-4">
+            <h2 className="font-semibold text-foreground mb-2">About</h2>
+            <p className="text-sm text-muted-foreground">{profile.bio}</p>
+          </div>
+        )}
 
         {/* Skills */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-foreground mb-3">Skills</h2>
-          <div className="flex flex-wrap gap-2">
-            {profile.skills.map((skill, index) => (
-              <span 
-                key={index} 
-                className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full"
-              >
-                {skill}
-              </span>
-            ))}
+        {profile.skills && profile.skills.length > 0 && (
+          <div className="bg-card rounded-xl border border-border p-4">
+            <h2 className="font-semibold text-foreground mb-3">Skills</h2>
+            <div className="flex flex-wrap gap-2">
+              {profile.skills.map((skill, index) => (
+                <span 
+                  key={index} 
+                  className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Pricing */}
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-foreground mb-3">Pricing</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-xs text-muted-foreground">Daily Rate</p>
-              <p className="text-lg font-bold text-foreground">{profile.dailyRate}</p>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-xs text-muted-foreground">Contract Rate</p>
-              <p className="text-lg font-bold text-foreground">{profile.contractRate}</p>
+        {(profile.daily_rate || profile.contract_rate) && (
+          <div className="bg-card rounded-xl border border-border p-4">
+            <h2 className="font-semibold text-foreground mb-3">Pricing</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {profile.daily_rate && (
+                <div className="bg-muted/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">Daily Rate</p>
+                  <p className="text-lg font-bold text-foreground">{profile.daily_rate}</p>
+                </div>
+              )}
+              {profile.contract_rate && (
+                <div className="bg-muted/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">Contract Rate</p>
+                  <p className="text-lg font-bold text-foreground">{profile.contract_rate}</p>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Menu Items */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -179,7 +209,7 @@ const Profile = () => {
         <Button 
           variant="outline" 
           className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
-          onClick={() => navigate("/")}
+          onClick={handleSignOut}
         >
           <LogOut className="w-4 h-4 mr-2" />
           Sign Out

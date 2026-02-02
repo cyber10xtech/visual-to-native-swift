@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Briefcase, Plus, X, Camera } from "lucide-react";
+import { Briefcase, Plus, X, Camera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,9 +10,10 @@ interface StepSkillsProps {
   onUpdate: (data: Partial<RegistrationData>) => void;
   onNext: () => void;
   onBack: () => void;
+  isSubmitting?: boolean;
 }
 
-const StepSkills = ({ data, onUpdate, onNext, onBack }: StepSkillsProps) => {
+const StepSkills = ({ data, onUpdate, onNext, onBack, isSubmitting = false }: StepSkillsProps) => {
   const [skillInput, setSkillInput] = useState("");
 
   const addSkill = () => {
@@ -59,11 +60,13 @@ const StepSkills = ({ data, onUpdate, onNext, onBack }: StepSkillsProps) => {
               onChange={(e) => setSkillInput(e.target.value)}
               onKeyDown={handleKeyDown}
               className="h-12 rounded-xl flex-1"
+              disabled={isSubmitting}
             />
             <Button
               type="button"
               onClick={addSkill}
               className="h-12 w-12 bg-primary text-primary-foreground rounded-xl p-0"
+              disabled={isSubmitting}
             >
               <Plus className="w-5 h-5" />
             </Button>
@@ -79,7 +82,11 @@ const StepSkills = ({ data, onUpdate, onNext, onBack }: StepSkillsProps) => {
                 className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm"
               >
                 {skill}
-                <button onClick={() => removeSkill(skill)} className="hover:text-destructive">
+                <button 
+                  onClick={() => removeSkill(skill)} 
+                  className="hover:text-destructive"
+                  disabled={isSubmitting}
+                >
                   <X className="w-4 h-4" />
                 </button>
               </span>
@@ -109,15 +116,27 @@ const StepSkills = ({ data, onUpdate, onNext, onBack }: StepSkillsProps) => {
 
       {/* Buttons */}
       <div className="flex gap-3 pt-4 border-t border-border">
-        <Button variant="outline" onClick={onBack} className="flex-1 h-12 rounded-xl">
+        <Button 
+          variant="outline" 
+          onClick={onBack} 
+          className="flex-1 h-12 rounded-xl"
+          disabled={isSubmitting}
+        >
           Back
         </Button>
         <Button
           onClick={onNext}
-          disabled={!isValid}
+          disabled={!isValid || isSubmitting}
           className="flex-1 h-12 bg-primary/80 hover:bg-primary text-primary-foreground rounded-xl"
         >
-          Complete Profile
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              Creating Account...
+            </>
+          ) : (
+            "Complete Profile"
+          )}
         </Button>
       </div>
     </div>

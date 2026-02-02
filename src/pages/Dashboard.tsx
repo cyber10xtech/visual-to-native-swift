@@ -6,21 +6,27 @@ import {
   TrendingUp, 
   CalendarDays,
   Settings,
-  Clock
+  Clock,
+  Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import BookingRequestCard from "@/components/dashboard/BookingRequestCard";
 import AppHeader from "@/components/layout/AppHeader";
 import BottomNav from "@/components/layout/BottomNav";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { Button } from "@/components/ui/button";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
 
   const stats = [
-    { icon: Calendar, label: "Total Bookings", value: "24", trend: "+12%", trendUp: true },
-    { icon: DollarSign, label: "This Month", value: "₦4.8M", trend: "+8%", trendUp: true },
-    { icon: Star, label: "Avg Rating", value: "4.9", trend: "+0.2", trendUp: true },
-    { icon: Briefcase, label: "Completed Jobs", value: "156", trend: "+5", trendUp: true },
+    { icon: Calendar, label: "Total Bookings", value: "0", trend: "-", trendUp: true },
+    { icon: DollarSign, label: "This Month", value: "₦0", trend: "-", trendUp: true },
+    { icon: Star, label: "Avg Rating", value: "-", trend: "-", trendUp: true },
+    { icon: Briefcase, label: "Completed Jobs", value: "0", trend: "-", trendUp: true },
   ];
 
   const quickActions = [
@@ -48,16 +54,26 @@ const Dashboard = () => {
       amount: "₦350K",
       status: "confirmed" as const,
     },
-    {
-      id: "3",
-      clientName: "Mike Davis",
-      service: "Circuit Breaker Install",
-      type: "Daily",
-      date: "Jan 22, 2026",
-      amount: "₦350K",
-      status: "confirmed" as const,
-    },
   ];
+
+  if (authLoading || profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <p className="text-muted-foreground mb-4">Please sign in to access your dashboard</p>
+        <Button onClick={() => navigate("/sign-in")}>Sign In</Button>
+      </div>
+    );
+  }
+
+  const firstName = profile?.full_name?.split(" ")[0] || "there";
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -66,7 +82,7 @@ const Dashboard = () => {
       <div className="p-4 space-y-6">
         {/* Welcome */}
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Welcome back, Ozioma! 👋</h1>
+          <h1 className="text-2xl font-bold text-foreground">Welcome back, {firstName}! 👋</h1>
           <p className="text-muted-foreground">Here's what's happening with your business today</p>
         </div>
 
