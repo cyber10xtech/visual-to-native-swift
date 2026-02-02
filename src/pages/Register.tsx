@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import StepCredentials from "@/components/register/StepCredentials";
 import StepPersonalInfo from "@/components/register/StepPersonalInfo";
 import StepContactPricing from "@/components/register/StepContactPricing";
@@ -26,9 +28,11 @@ export interface RegistrationData {
 const Register = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const accountType = location.state?.accountType || "handyman";
   
   const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<RegistrationData>({
     accountType,
     email: "",
@@ -53,12 +57,35 @@ const Register = () => {
     setFormData((prev) => ({ ...prev, ...data }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < totalSteps) {
       setCurrentStep((prev) => prev + 1);
     } else {
       // Complete registration
-      navigate("/dashboard");
+      setIsSubmitting(true);
+      
+      const { error } = await signUp(formData.email, formData.password, {
+        accountType: formData.accountType,
+        fullName: formData.fullName,
+        profession: formData.profession,
+        bio: formData.bio,
+        location: formData.location,
+        phoneNumber: formData.phoneNumber,
+        whatsappNumber: formData.whatsappNumber,
+        dailyRate: formData.dailyRate,
+        contractRate: formData.contractRate,
+        skills: formData.skills,
+      });
+
+      setIsSubmitting(false);
+
+      if (error) {
+        toast.error(error.message || "Failed to create account");
+        return;
+      }
+
+      toast.success("Account created! Please check your email to verify your account.");
+      navigate("/sign-in");
     }
   };
 
@@ -106,6 +133,7 @@ const Register = () => {
             onUpdate={updateFormData}
             onNext={handleNext}
             onBack={handleBack}
+            isSubmitting={isSubmitting}
           />
         );
       default:

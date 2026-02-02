@@ -14,13 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          account_type: string
+          bio: string | null
+          contract_rate: string | null
+          created_at: string
+          daily_rate: string | null
+          documents_uploaded: boolean | null
+          full_name: string
+          id: string
+          location: string | null
+          phone_number: string | null
+          profession: string | null
+          skills: string[] | null
+          updated_at: string
+          user_id: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          account_type: string
+          bio?: string | null
+          contract_rate?: string | null
+          created_at?: string
+          daily_rate?: string | null
+          documents_uploaded?: boolean | null
+          full_name: string
+          id?: string
+          location?: string | null
+          phone_number?: string | null
+          profession?: string | null
+          skills?: string[] | null
+          updated_at?: string
+          user_id: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          account_type?: string
+          bio?: string | null
+          contract_rate?: string | null
+          created_at?: string
+          daily_rate?: string | null
+          documents_uploaded?: boolean | null
+          full_name?: string
+          id?: string
+          location?: string | null
+          phone_number?: string | null
+          profession?: string | null
+          skills?: string[] | null
+          updated_at?: string
+          user_id?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_owner_of_profile: {
+        Args: { profile_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
