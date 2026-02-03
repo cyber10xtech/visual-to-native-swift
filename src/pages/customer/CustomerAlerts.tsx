@@ -1,9 +1,7 @@
-import { Calendar, MessageCircle, Star, Clock, CheckCheck, LogIn, Bell, Loader2 } from "lucide-react";
+import { Calendar, MessageCircle, Star, Clock, CheckCheck, Bell, Loader2 } from "lucide-react";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -22,40 +20,35 @@ const getIconForType = (type: string) => {
   }
 };
 
+const getNavigationPath = (type: string, data: Record<string, unknown> | null): string | null => {
+  switch (type) {
+    case "booking":
+      return data?.bookingId ? `/hub?tab=bookings` : "/hub?tab=bookings";
+    case "message":
+      return data?.conversationId ? `/chat/${data.conversationId}` : "/messages";
+    case "review":
+      return "/hub?tab=bookings";
+    default:
+      return null;
+  }
+};
+
 const CustomerAlerts = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { notifications, loading, markAsRead, markAllAsRead } = useNotifications();
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Guest state
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="max-w-md mx-auto px-4 py-6">
-          <h1 className="text-xl font-bold text-foreground mb-4">Notifications</h1>
-          
-          <div className="bg-muted/50 rounded-xl p-6 text-center mt-8">
-            <LogIn className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <h3 className="font-semibold text-foreground mb-2">Sign in to view notifications</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Create an account to receive alerts about bookings, messages, and more.
-            </p>
-            <div className="flex gap-2 justify-center">
-              <Button onClick={() => navigate("/sign-in")} size="sm">
-                Sign In
-              </Button>
-              <Button onClick={() => navigate("/register")} variant="outline" size="sm">
-                Create Account
-              </Button>
-            </div>
-          </div>
-        </div>
-        <CustomerBottomNav />
-      </div>
-    );
-  }
+  const handleNotificationClick = (notification: typeof notifications[0]) => {
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
+    
+    const path = getNavigationPath(notification.type, notification.data);
+    if (path) {
+      navigate(path);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -95,13 +88,16 @@ const CustomerAlerts = () => {
           <div className="space-y-2">
             {notifications.map((notification) => {
               const { icon: Icon, color, bg } = getIconForType(notification.type);
+              const hasNavigation = getNavigationPath(notification.type, notification.data) !== null;
+              
               return (
                 <div 
                   key={notification.id}
-                  onClick={() => !notification.read && markAsRead(notification.id)}
+                  onClick={() => handleNotificationClick(notification)}
                   className={cn(
-                    "bg-card rounded-xl p-4 border border-border relative cursor-pointer",
-                    !notification.read && "bg-primary/5"
+                    "bg-card rounded-xl p-4 border border-border relative cursor-pointer transition-colors hover:bg-muted/50",
+                    !notification.read && "bg-primary/5",
+                    hasNavigation && "active:scale-[0.98]"
                   )}
                 >
                   <div className="flex gap-3">

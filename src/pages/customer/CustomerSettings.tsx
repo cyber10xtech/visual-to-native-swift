@@ -59,7 +59,7 @@ const secondaryItems = [
   { 
     icon: Share2, 
     label: "Invite Friends", 
-    description: "Share HandyConnect and earn rewards",
+    description: "Share Safesearch and earn rewards",
     path: "/invite" 
   },
   { 
@@ -79,77 +79,7 @@ const CustomerSettings = () => {
     navigate("/sign-in");
   };
 
-  const userName = user?.email?.split("@")[0] || "Guest";
-
-  // Guest state - show sign in prompt
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="max-w-md mx-auto px-4 py-6">
-          <h1 className="text-xl font-bold text-foreground mb-6">Settings</h1>
-
-          {/* Guest Card */}
-          <div className="bg-primary rounded-xl p-6 mb-6 text-center">
-            <Avatar className="w-16 h-16 mx-auto mb-4 border-2 border-primary-foreground/20">
-              <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground text-xl font-semibold">
-                ?
-              </AvatarFallback>
-            </Avatar>
-            <h2 className="font-semibold text-primary-foreground text-lg mb-2">
-              Welcome, Guest!
-            </h2>
-            <p className="text-sm text-primary-foreground/80 mb-4">
-              Sign in to access all features, save favorites, and book professionals.
-            </p>
-            <div className="flex gap-2 justify-center">
-              <Button
-                variant="secondary"
-                onClick={() => navigate("/sign-in")}
-                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-              >
-                Sign In
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => navigate("/register")}
-                className="bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 border-0"
-              >
-                Create Account
-              </Button>
-            </div>
-          </div>
-
-          {/* Limited Settings for Guests */}
-          <div className="bg-card rounded-xl border border-border overflow-hidden mb-4">
-            {secondaryItems.map((item, index) => (
-              <button
-                key={item.label}
-                onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors ${
-                  index < secondaryItems.length - 1 ? "border-b border-border" : ""
-                }`}
-              >
-                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                  <item.icon className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1 text-left">
-                  <span className="font-medium text-foreground block">{item.label}</span>
-                  <span className="text-xs text-muted-foreground">{item.description}</span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              </button>
-            ))}
-          </div>
-
-          {/* Version Info */}
-          <div className="text-center text-sm text-muted-foreground">
-            <p>Safesearch Version 1.0.0</p>
-          </div>
-        </div>
-        <CustomerBottomNav />
-      </div>
-    );
-  }
+  const userName = user?.email?.split("@")[0] || "User";
 
   return (
     <div className="min-h-screen bg-background pb-20">

@@ -28,6 +28,7 @@ import InviteFriends from "./pages/customer/InviteFriends";
 import TermsPrivacy from "./pages/customer/TermsPrivacy";
 import BookingRequest from "./pages/customer/BookingRequest";
 import CustomerInstall from "./pages/customer/CustomerInstall";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -47,21 +48,21 @@ const App = () => (
             <Route path="/register" element={<CustomerRegister />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/home" element={<CustomerHome />} />
-            <Route path="/hub" element={<CustomerHub />} />
-            <Route path="/messages" element={<CustomerMessages />} />
-            <Route path="/chat/:id" element={<CustomerChat />} />
-            <Route path="/alerts" element={<CustomerAlerts />} />
-            <Route path="/settings" element={<CustomerSettings />} />
-            <Route path="/professional/:id" element={<ProfessionalProfile />} />
-            <Route path="/book/:id" element={<BookingRequest />} />
-            <Route path="/settings/edit-profile" element={<EditProfile />} />
-            <Route path="/settings/payments" element={<PaymentMethods />} />
-            <Route path="/settings/notifications" element={<NotificationSettings />} />
-            <Route path="/settings/privacy" element={<PrivacySecurity />} />
-            <Route path="/settings/help" element={<HelpSupport />} />
-            <Route path="/live-chat" element={<LiveChatSupport />} />
-            <Route path="/invite" element={<InviteFriends />} />
+            <Route path="/home" element={<ProtectedRoute><CustomerHome /></ProtectedRoute>} />
+            <Route path="/hub" element={<ProtectedRoute><CustomerHub /></ProtectedRoute>} />
+            <Route path="/messages" element={<ProtectedRoute><CustomerMessages /></ProtectedRoute>} />
+            <Route path="/chat/:id" element={<ProtectedRoute><CustomerChat /></ProtectedRoute>} />
+            <Route path="/alerts" element={<ProtectedRoute><CustomerAlerts /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><CustomerSettings /></ProtectedRoute>} />
+            <Route path="/professional/:id" element={<ProtectedRoute><ProfessionalProfile /></ProtectedRoute>} />
+            <Route path="/book/:id" element={<ProtectedRoute><BookingRequest /></ProtectedRoute>} />
+            <Route path="/settings/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+            <Route path="/settings/payments" element={<ProtectedRoute><PaymentMethods /></ProtectedRoute>} />
+            <Route path="/settings/notifications" element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} />
+            <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySecurity /></ProtectedRoute>} />
+            <Route path="/settings/help" element={<ProtectedRoute><HelpSupport /></ProtectedRoute>} />
+            <Route path="/live-chat" element={<ProtectedRoute><LiveChatSupport /></ProtectedRoute>} />
+            <Route path="/invite" element={<ProtectedRoute><InviteFriends /></ProtectedRoute>} />
             <Route path="/terms" element={<TermsPrivacy />} />
             <Route path="/install" element={<CustomerInstall />} />
             
