@@ -89,7 +89,7 @@ const BookingRequest = () => {
     }
 
     toast.success("Booking request sent successfully!");
-    navigate("/customer/hub");
+    navigate("/hub");
   };
 
   return (

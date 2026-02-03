@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Wrench, Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
+import { Wrench, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -32,11 +32,11 @@ const CustomerSignIn = () => {
     }
 
     toast.success("Welcome back!");
-    navigate("/customer/home");
+    navigate("/home");
   };
 
   return (
-    <div className="min-h-screen bg-primary flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen gradient-primary flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md bg-card rounded-3xl p-8 shadow-xl">
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
@@ -57,7 +57,7 @@ const CustomerSignIn = () => {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-12 bg-muted/50 border border-border rounded-xl"
+              className="h-12 rounded-xl"
               disabled={loading}
             />
           </div>
@@ -70,14 +70,14 @@ const CustomerSignIn = () => {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-12 bg-muted/50 border border-border rounded-xl"
+              className="h-12 rounded-xl"
               disabled={loading}
             />
           </div>
 
           <Button 
             type="submit" 
-            className="w-full h-12 bg-primary text-primary-foreground rounded-xl text-lg font-semibold"
+            className="w-full h-12 rounded-xl text-lg font-semibold"
             disabled={loading}
           >
             {loading ? (
@@ -95,22 +95,14 @@ const CustomerSignIn = () => {
         <div className="mt-6 text-center">
           <p className="text-muted-foreground">
             Don't have an account?{" "}
-            <button
-              onClick={() => navigate("/customer/register")}
+            <Link
+              to="/register"
               className="text-primary font-semibold hover:underline"
             >
               Sign up
-            </button>
+            </Link>
           </p>
         </div>
-
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center justify-center gap-2 w-full mt-4 text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
       </div>
     </div>
   );

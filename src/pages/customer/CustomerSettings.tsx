@@ -21,37 +21,37 @@ const settingsItems = [
     icon: User, 
     label: "Edit Profile", 
     description: "Update your personal information",
-    path: "/customer/settings/edit-profile" 
+    path: "/settings/edit-profile" 
   },
   { 
     icon: Heart, 
     label: "Saved Professionals", 
     description: "View your favorite handymen",
-    path: "/customer/hub?tab=favorites" 
+    path: "/hub?tab=favorites" 
   },
   { 
     icon: CreditCard, 
     label: "Payment Methods", 
     description: "Manage your payment options",
-    path: "/customer/settings/payments" 
+    path: "/settings/payments" 
   },
   { 
     icon: Bell, 
     label: "Notifications", 
     description: "Manage notification preferences",
-    path: "/customer/settings/notifications" 
+    path: "/settings/notifications" 
   },
   { 
     icon: Shield, 
     label: "Privacy & Security", 
     description: "Control your privacy settings",
-    path: "/customer/settings/privacy" 
+    path: "/settings/privacy" 
   },
   { 
     icon: HelpCircle, 
     label: "Help & Support", 
     description: "Get help and contact support",
-    path: "/customer/settings/help" 
+    path: "/settings/help" 
   },
 ];
 
@@ -60,13 +60,13 @@ const secondaryItems = [
     icon: Share2, 
     label: "Invite Friends", 
     description: "Share HandyConnect and earn rewards",
-    path: "/customer/invite" 
+    path: "/invite" 
   },
   { 
     icon: FileText, 
     label: "Terms & Privacy", 
     description: "Read our terms and privacy policy",
-    path: "/customer/terms" 
+    path: "/terms" 
   },
 ];
 
@@ -76,7 +76,7 @@ const CustomerSettings = () => {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/");
+    navigate("/sign-in");
   };
 
   const userName = user?.email?.split("@")[0] || "John Doe";
@@ -105,7 +105,7 @@ const CustomerSettings = () => {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => navigate("/customer/settings/edit-profile")}
+            onClick={() => navigate("/settings/edit-profile")}
             className="mt-3 bg-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/30 border-0"
           >
             View Profile

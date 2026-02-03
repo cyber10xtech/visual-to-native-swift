@@ -20,15 +20,15 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt"],
       manifest: {
-        name: "ProConnect - Business App",
-        short_name: "ProConnect",
-        description: "Connect with clients, manage bookings, and grow your business",
-        theme_color: "#2563eb",
+        name: "HandyConnect - Find Professionals",
+        short_name: "HandyConnect",
+        description: "Find trusted professionals near you for all your home service needs",
+        theme_color: "#16a34a",
         background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait",
         scope: "/",
-        start_url: "/",
+        start_url: "/home",
         icons: [
           {
             src: "/pwa-192x192.png",
