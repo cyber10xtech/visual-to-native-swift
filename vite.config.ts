@@ -20,10 +20,10 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt"],
       manifest: {
-        name: "HandyConnect - Find Professionals",
-        short_name: "HandyConnect",
+        name: "Safesearch - Find Professionals",
+        short_name: "Safesearch",
         description: "Find trusted professionals near you for all your home service needs",
-        theme_color: "#16a34a",
+        theme_color: "#3b82f6",
         background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait",
