@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Heart, AlertCircle, Sparkles, Clock, AlertTriangle, Loader2 } from "lucide-react";
+import { Calendar, Heart, AlertCircle, Sparkles, Clock, AlertTriangle, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 import ProfessionalCard from "@/components/customer/ProfessionalCard";
@@ -7,77 +7,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProfessionals } from "@/hooks/useProfessionals";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useCustomerProfile } from "@/hooks/useCustomerProfile";
+import { useAuth } from "@/hooks/useAuth";
 
 type HubTab = "bookings" | "favorites" | "emergency";
 type DiscoverTab = "discover" | "recent";
-type BookingFilter = "all" | "upcoming" | "in_progress" | "completed";
-
-
-const mockBookings = [
-  {
-    id: "1",
-    number: 1,
-    title: "Kitchen Sink Repair",
-    professionalName: "Mike Johnson",
-    profession: "Plumber",
-    date: "Jan 20, 2026",
-    time: "14:00",
-    location: "123 Main Street, New York, NY",
-    price: 130,
-    status: "upcoming" as const,
-  },
-  {
-    id: "2",
-    number: 2,
-    title: "Electrical Outlet Installation",
-    professionalName: "Sarah Williams",
-    profession: "Electrician",
-    date: "Jan 15, 2026",
-    time: "10:00",
-    location: "123 Main Street, New York, NY",
-    price: 150,
-    status: "completed" as const,
-  },
-  {
-    id: "3",
-    number: 3,
-    title: "Cabinet Installation",
-    professionalName: "David Chen",
-    profession: "Carpenter",
-    date: "Jan 25, 2026",
-    time: "09:00",
-    location: "123 Main Street, New York, NY",
-    price: 800,
-    status: "pending" as const,
-  },
-  {
-    id: "4",
-    number: 4,
-    title: "Bathroom Plumbing",
-    professionalName: "Mike Johnson",
-    profession: "Plumber",
-    date: "Jan 10, 2026",
-    time: "11:00",
-    location: "123 Main Street, New York, NY",
-    price: 195,
-    status: "completed" as const,
-  },
-  {
-    id: "5",
-    number: 5,
-    title: "Interior Painting",
-    professionalName: "Lisa Brown",
-    profession: "Painter",
-    date: "Jan 18, 2026",
-    time: "08:00",
-    location: "123 Main Street, New York, NY",
-    price: 760,
-    status: "in_progress" as const,
-  },
-];
 
 const CustomerHub = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as HubTab) || "bookings";
   
@@ -89,6 +26,10 @@ const CustomerHub = () => {
   const { favorites, loading: favoritesLoading, addFavorite, removeFavorite, isFavorite } = useFavorites();
 
   const handleToggleFavorite = async (professionalId: string) => {
+    if (!user) {
+      navigate("/sign-in");
+      return;
+    }
     if (isFavorite(professionalId)) {
       await removeFavorite(professionalId);
     } else {
@@ -108,6 +49,24 @@ const CustomerHub = () => {
     { id: "emergency" as const, label: "Emergency", icon: AlertCircle },
   ];
 
+  // Guest prompt component
+  const GuestPrompt = () => (
+    <div className="bg-muted/50 rounded-xl p-6 text-center">
+      <LogIn className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+      <h3 className="font-semibold text-foreground mb-2">Sign in to access this feature</h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Create an account to save favorites, view bookings, and more.
+      </p>
+      <div className="flex gap-2 justify-center">
+        <Button onClick={() => navigate("/sign-in")} size="sm">
+          Sign In
+        </Button>
+        <Button onClick={() => navigate("/register")} variant="outline" size="sm">
+          Create Account
+        </Button>
+      </div>
+    </div>
+  );
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="max-w-md mx-auto px-4 py-6">
@@ -209,9 +168,11 @@ const CustomerHub = () => {
           <>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-foreground">Favorites</h2>
-              <span className="text-sm text-muted-foreground">{favorites.length} saved professionals</span>
+              {user && <span className="text-sm text-muted-foreground">{favorites.length} saved professionals</span>}
             </div>
-            {favoritesLoading ? (
+            {!user ? (
+              <GuestPrompt />
+            ) : favoritesLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
