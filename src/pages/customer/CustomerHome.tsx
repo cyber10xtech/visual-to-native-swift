@@ -93,7 +93,7 @@ const CustomerHome = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => navigate("/customer/hub?tab=emergency")}
+                onClick={() => navigate("/hub?tab=emergency")}
                 className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
                 Get Emergency Help
@@ -154,7 +154,7 @@ const CustomerHome = () => {
                   distance=""
                   dailyRate={professional.daily_rate ? parseInt(professional.daily_rate) : 0}
                   variant="compact"
-                  onView={() => navigate(`/customer/professional/${professional.id}`)}
+                  onView={() => navigate(`/professional/${professional.id}`)}
                 />
               ))}
             </div>

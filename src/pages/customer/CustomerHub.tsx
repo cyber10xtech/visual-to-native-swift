@@ -185,7 +185,7 @@ const CustomerHub = () => {
                         weeklyRate={professional.contract_rate ? parseInt(professional.contract_rate) : 0}
                         bio={professional.bio || ""}
                         variant="detailed"
-                        onView={() => navigate(`/customer/professional/${professional.id}`)}
+                        onView={() => navigate(`/professional/${professional.id}`)}
                       />
                     ))}
                   </div>
@@ -235,7 +235,7 @@ const CustomerHub = () => {
                     dailyRate={fav.professional?.daily_rate ? parseInt(fav.professional.daily_rate) : 0}
                     variant="favorite"
                     isFavorite={true}
-                    onBook={() => navigate(`/customer/professional/${fav.professional_id}`)}
+                    onBook={() => navigate(`/professional/${fav.professional_id}`)}
                     onFavoriteToggle={() => handleToggleFavorite(fav.professional_id)}
                   />
                 ))}
@@ -298,7 +298,7 @@ const CustomerHub = () => {
                     distance=""
                     dailyRate={professional.daily_rate ? parseInt(professional.daily_rate) : 0}
                     variant="emergency"
-                    onView={() => navigate(`/customer/professional/${professional.id}`)}
+                    onView={() => navigate(`/professional/${professional.id}`)}
                     onCall={() => window.open(`tel:${professional.phone_number}`, '_self')}
                   />
                 ))}

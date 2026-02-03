@@ -76,7 +76,7 @@ const CustomerInstall = () => {
                 HandyConnect is already installed on your device. Open it from your home screen.
               </p>
               <Button 
-                onClick={() => navigate("/customer/home")} 
+                onClick={() => navigate("/home")} 
                 className="mt-6 bg-gradient-to-r from-emerald-500 to-teal-600 text-white"
               >
                 Go to Home
@@ -208,19 +208,14 @@ const CustomerInstall = () => {
           </div>
         </div>
 
-        {/* Direct links for testing */}
+        {/* Direct link for testing */}
         <div className="mt-8 p-4 bg-muted/30 rounded-xl">
-          <h3 className="font-semibold text-foreground mb-2">Test URLs</h3>
+          <h3 className="font-semibold text-foreground mb-2">Install URL</h3>
           <p className="text-sm text-muted-foreground mb-3">
-            Open these links on your phone to install:
+            Open this link on your phone to install:
           </p>
-          <div className="space-y-2 text-sm">
-            <div className="p-2 bg-background rounded-lg break-all font-mono text-xs">
-              Customer: {window.location.origin}/customer/install
-            </div>
-            <div className="p-2 bg-background rounded-lg break-all font-mono text-xs">
-              Professional: {window.location.origin}/install
-            </div>
+          <div className="p-2 bg-background rounded-lg break-all font-mono text-xs">
+            {window.location.origin}/install
           </div>
         </div>
       </div>

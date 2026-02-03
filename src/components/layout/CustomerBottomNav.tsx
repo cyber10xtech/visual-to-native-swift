@@ -3,11 +3,11 @@ import { NavLink } from "@/components/NavLink";
 
 const CustomerBottomNav = () => {
   const navItems = [
-    { icon: Home, label: "Home", path: "/customer/home" },
-    { icon: Building2, label: "Hub", path: "/customer/hub" },
-    { icon: MessageSquare, label: "Messages", path: "/customer/messages" },
-    { icon: Bell, label: "Alerts", path: "/customer/alerts", badge: true },
-    { icon: Settings, label: "Settings", path: "/customer/settings" },
+    { icon: Home, label: "Home", path: "/home" },
+    { icon: Building2, label: "Hub", path: "/hub" },
+    { icon: MessageSquare, label: "Messages", path: "/messages" },
+    { icon: Bell, label: "Alerts", path: "/alerts", badge: true },
+    { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
   return (

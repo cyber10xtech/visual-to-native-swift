@@ -229,7 +229,7 @@ const ProfessionalProfile = () => {
         {/* Book Button */}
         <Button 
           className="w-full h-12 text-lg font-semibold"
-          onClick={() => navigate(`/customer/book/${id}`)}
+          onClick={() => navigate(`/book/${id}`)}
         >
           Book {professional.name}
         </Button>

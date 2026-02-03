@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const contactOptions = [
-  { icon: MessageCircle, label: "Live Chat", color: "bg-primary/10 text-primary", path: "/customer/live-chat" },
+  { icon: MessageCircle, label: "Live Chat", color: "bg-primary/10 text-primary", path: "/live-chat" },
   { icon: Mail, label: "Email", color: "bg-success/10 text-success", path: null },
   { icon: Phone, label: "Call", color: "bg-purple/10 text-purple", path: null },
 ];
