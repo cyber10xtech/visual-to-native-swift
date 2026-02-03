@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wrench, Loader2 } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +27,12 @@ const CustomerSignIn = () => {
     setLoading(false);
 
     if (error) {
-      toast.error(error.message || "Failed to sign in");
+      // Check for email not confirmed error
+      if (error.message.includes("Email not confirmed")) {
+        toast.error("Please verify your email before signing in. Check your inbox for the verification link.");
+      } else {
+        toast.error(error.message || "Failed to sign in");
+      }
       return;
     }
 
@@ -40,10 +45,10 @@ const CustomerSignIn = () => {
       <div className="w-full max-w-md bg-card rounded-3xl p-8 shadow-xl">
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4">
-            <Wrench className="w-8 h-8 text-primary-foreground" />
+          <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mb-4">
+            <Search className="w-10 h-10 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">HandyConnect</h1>
+          <h1 className="text-2xl font-bold text-foreground">Safesearch</h1>
           <p className="text-muted-foreground mt-1">Find trusted professionals near you</p>
         </div>
 
@@ -57,7 +62,7 @@ const CustomerSignIn = () => {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-12 rounded-xl"
+              className="h-14 rounded-xl text-base"
               disabled={loading}
             />
           </div>
@@ -70,14 +75,14 @@ const CustomerSignIn = () => {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-12 rounded-xl"
+              className="h-14 rounded-xl text-base"
               disabled={loading}
             />
           </div>
 
           <Button 
             type="submit" 
-            className="w-full h-12 rounded-xl text-lg font-semibold"
+            className="w-full h-14 rounded-xl text-lg font-semibold"
             disabled={loading}
           >
             {loading ? (
@@ -90,6 +95,16 @@ const CustomerSignIn = () => {
             )}
           </Button>
         </form>
+
+        {/* Forgot Password */}
+        <div className="mt-4 text-center">
+          <Link
+            to="/forgot-password"
+            className="text-primary text-sm hover:underline"
+          >
+            Forgot your password?
+          </Link>
+        </div>
 
         {/* Footer */}
         <div className="mt-6 text-center">
