@@ -1,20 +1,17 @@
-import { useState, useEffect } from "react";
-import { Calendar, Heart, AlertCircle, Sparkles, Clock, AlertTriangle, Loader2, LogIn } from "lucide-react";
+import { useState } from "react";
+import { Calendar, Heart, AlertCircle, Sparkles, Clock, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 import ProfessionalCard from "@/components/customer/ProfessionalCard";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProfessionals } from "@/hooks/useProfessionals";
 import { useFavorites } from "@/hooks/useFavorites";
-import { useCustomerProfile } from "@/hooks/useCustomerProfile";
-import { useAuth } from "@/hooks/useAuth";
 
 type HubTab = "bookings" | "favorites" | "emergency";
 type DiscoverTab = "discover" | "recent";
 
 const CustomerHub = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as HubTab) || "bookings";
   
@@ -22,14 +19,9 @@ const CustomerHub = () => {
   const [discoverTab, setDiscoverTab] = useState<DiscoverTab>("discover");
 
   const { professionals, loading: professionalsLoading } = useProfessionals();
-  const { profile: customerProfile } = useCustomerProfile();
   const { favorites, loading: favoritesLoading, addFavorite, removeFavorite, isFavorite } = useFavorites();
 
   const handleToggleFavorite = async (professionalId: string) => {
-    if (!user) {
-      navigate("/sign-in");
-      return;
-    }
     if (isFavorite(professionalId)) {
       await removeFavorite(professionalId);
     } else {
@@ -49,24 +41,6 @@ const CustomerHub = () => {
     { id: "emergency" as const, label: "Emergency", icon: AlertCircle },
   ];
 
-  // Guest prompt component
-  const GuestPrompt = () => (
-    <div className="bg-muted/50 rounded-xl p-6 text-center">
-      <LogIn className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-      <h3 className="font-semibold text-foreground mb-2">Sign in to access this feature</h3>
-      <p className="text-sm text-muted-foreground mb-4">
-        Create an account to save favorites, view bookings, and more.
-      </p>
-      <div className="flex gap-2 justify-center">
-        <Button onClick={() => navigate("/sign-in")} size="sm">
-          Sign In
-        </Button>
-        <Button onClick={() => navigate("/register")} variant="outline" size="sm">
-          Create Account
-        </Button>
-      </div>
-    </div>
-  );
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="max-w-md mx-auto px-4 py-6">
@@ -168,11 +142,9 @@ const CustomerHub = () => {
           <>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-foreground">Favorites</h2>
-              {user && <span className="text-sm text-muted-foreground">{favorites.length} saved professionals</span>}
+              <span className="text-sm text-muted-foreground">{favorites.length} saved professionals</span>
             </div>
-            {!user ? (
-              <GuestPrompt />
-            ) : favoritesLoading ? (
+            {favoritesLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>

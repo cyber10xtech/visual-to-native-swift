@@ -3,9 +3,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { LogIn, MessageSquare, Loader2 } from "lucide-react";
+import { MessageSquare, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -30,8 +29,6 @@ const CustomerMessages = () => {
   useEffect(() => {
     if (user) {
       fetchConversations();
-    } else {
-      setLoading(false);
     }
   }, [user]);
 
@@ -83,34 +80,6 @@ const CustomerMessages = () => {
     }
   };
 
-  // Guest state
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="max-w-md mx-auto px-4 py-6">
-          <h1 className="text-xl font-bold text-foreground mb-4">Messages</h1>
-          
-          <div className="bg-muted/50 rounded-xl p-6 text-center mt-8">
-            <LogIn className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-            <h3 className="font-semibold text-foreground mb-2">Sign in to view messages</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Create an account to chat with professionals and track your conversations.
-            </p>
-            <div className="flex gap-2 justify-center">
-              <Button onClick={() => navigate("/sign-in")} size="sm">
-                Sign In
-              </Button>
-              <Button onClick={() => navigate("/register")} variant="outline" size="sm">
-                Create Account
-              </Button>
-            </div>
-          </div>
-        </div>
-        <CustomerBottomNav />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="max-w-md mx-auto px-4 py-6">
@@ -137,7 +106,7 @@ const CustomerMessages = () => {
               <button
                 key={conversation.id}
                 onClick={() => navigate(`/chat/${conversation.id}`)}
-                className="w-full flex items-center gap-3 py-4 hover:bg-muted/50 transition-colors"
+                className="w-full flex items-center gap-3 py-4 hover:bg-muted/50 transition-colors active:scale-[0.98]"
               >
                 <Avatar className="w-12 h-12 bg-primary">
                   <AvatarFallback className="text-primary-foreground font-semibold bg-primary">
