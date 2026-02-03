@@ -9,6 +9,8 @@ import NotFound from "./pages/NotFound";
 // Customer App Pages
 import CustomerSignIn from "./pages/customer/CustomerSignIn";
 import CustomerRegister from "./pages/customer/CustomerRegister";
+import ForgotPassword from "./pages/customer/ForgotPassword";
+import ResetPassword from "./pages/customer/ResetPassword";
 import CustomerHome from "./pages/customer/CustomerHome";
 import CustomerHub from "./pages/customer/CustomerHub";
 import CustomerMessages from "./pages/customer/CustomerMessages";
@@ -43,6 +45,8 @@ const App = () => (
             {/* Customer App Routes - simplified paths */}
             <Route path="/sign-in" element={<CustomerSignIn />} />
             <Route path="/register" element={<CustomerRegister />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/home" element={<CustomerHome />} />
             <Route path="/hub" element={<CustomerHub />} />
             <Route path="/messages" element={<CustomerMessages />} />

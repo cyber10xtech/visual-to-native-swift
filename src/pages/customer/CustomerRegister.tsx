@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Search, Loader2 } from "lucide-react";
 
 const CustomerRegister = () => {
   const navigate = useNavigate();
@@ -50,7 +50,7 @@ const CustomerRegister = () => {
 
       // Create customer profile
       if (data.user) {
-        const referralCode = `HANDY${data.user.id.slice(0, 6).toUpperCase()}`;
+        const referralCode = `SAFE${data.user.id.slice(0, 6).toUpperCase()}`;
         
         const { error: profileError } = await supabase
           .from("customer_profiles")
@@ -66,7 +66,7 @@ const CustomerRegister = () => {
         }
       }
 
-      toast.success("Account created! Please check your email to verify.");
+      toast.success("Account created! Please check your email to verify your account.");
       navigate("/sign-in");
     } catch (error: any) {
       toast.error(error.message || "Failed to create account");
@@ -78,18 +78,14 @@ const CustomerRegister = () => {
   return (
     <div className="min-h-screen gradient-primary flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-card rounded-3xl shadow-xl overflow-hidden">
-        <div className="p-6">
-          <button
-            onClick={() => navigate("/sign-in")}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Sign In
-          </button>
-
-          <div className="text-center mb-6">
+        <div className="p-8">
+          {/* Header */}
+          <div className="flex flex-col items-center mb-6">
+            <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mb-4">
+              <Search className="w-10 h-10 text-primary-foreground" />
+            </div>
             <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
-            <p className="text-muted-foreground">Join HandyConnect today</p>
+            <p className="text-muted-foreground">Join Safesearch today</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
