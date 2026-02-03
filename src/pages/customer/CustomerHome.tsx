@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, SlidersHorizontal, ChevronDown, AlertCircle, Loader2 } from "lucide-react";
+import { Search, SlidersHorizontal, ChevronDown, AlertCircle, Loader2, LogIn } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import ProfessionalCard from "@/components/customer/ProfessionalCard";
 import CategoryCard from "@/components/customer/CategoryCard";
 import { useNavigate } from "react-router-dom";
 import { useProfessionals } from "@/hooks/useProfessionals";
+import { useAuth } from "@/hooks/useAuth";
 
 const categories = [
   { name: "Architect", icon: "architect" },
@@ -20,6 +21,7 @@ const categories = [
 
 const CustomerHome = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "professionals" | "handymen">("all");
   const [sortBy, setSortBy] = useState("Top Rated");
@@ -41,7 +43,20 @@ const CustomerHome = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="max-w-md mx-auto px-4 py-6">
-        <h1 className="text-xl font-bold text-foreground mb-4">Find a Professional</h1>
+        {/* Header with Sign In for guests */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold text-foreground">Find a Professional</h1>
+          {!user && (
+            <Button
+              size="sm"
+              onClick={() => navigate("/sign-in")}
+              className="gap-1"
+            >
+              <LogIn className="w-4 h-4" />
+              Sign In
+            </Button>
+          )}
+        </div>
 
         {/* Search */}
         <div className="relative mb-4">
