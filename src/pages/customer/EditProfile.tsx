@@ -1,36 +1,75 @@
-import { useState } from "react";
-import { ArrowLeft, Camera, Save } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Camera, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
+import { useCustomerProfile } from "@/hooks/useCustomerProfile";
 import { toast } from "sonner";
 
 const EditProfile = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  
+  const { profile, loading: profileLoading, updateProfile } = useCustomerProfile();
+  const [saving, setSaving] = useState(false);
+
   const [formData, setFormData] = useState({
-    fullName: "John Doe",
-    email: user?.email || "john.doe@example.com",
-    phone: "+1 (555) 000-1234",
-    address: "123 Main Street",
-    city: "New York",
-    zipCode: "10001",
+    fullName: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    zipCode: "",
   });
+
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        fullName: profile.full_name || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
+        address: profile.address || "",
+        city: profile.city || "",
+        zipCode: profile.zip_code || "",
+      });
+    }
+  }, [profile]);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    toast.success("Profile updated successfully!");
-    navigate(-1);
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await updateProfile({
+      full_name: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address,
+      city: formData.city,
+      zip_code: formData.zipCode,
+    });
+    setSaving(false);
+
+    if (error) {
+      toast.error("Failed to update profile. Please try again.");
+    } else {
+      toast.success("Profile updated successfully!");
+      navigate(-1);
+    }
   };
 
-  const initials = formData.fullName.split(" ").map(n => n[0]).join("").toUpperCase();
+  const initials = formData.fullName
+    ? formData.fullName.split(" ").map(n => n[0]).join("").toUpperCase()
+    : "?";
+
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -50,7 +89,7 @@ const EditProfile = () => {
         <div className="flex flex-col items-center mb-8">
           <div className="relative">
             <Avatar className="w-24 h-24 bg-primary">
-              <AvatarImage src="" alt="Profile" />
+              <AvatarImage src={profile?.avatar_url || ""} alt="Profile" />
               <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
                 {initials}
               </AvatarFallback>
@@ -82,8 +121,8 @@ const EditProfile = () => {
               id="email"
               type="email"
               value={formData.email}
-              onChange={(e) => handleChange("email", e.target.value)}
-              className="h-12 bg-muted/50 border border-border rounded-xl"
+              disabled
+              className="h-12 bg-muted/50 border border-border rounded-xl opacity-60"
             />
           </div>
 
@@ -93,6 +132,7 @@ const EditProfile = () => {
               id="phone"
               value={formData.phone}
               onChange={(e) => handleChange("phone", e.target.value)}
+              placeholder="Enter your phone number"
               className="h-12 bg-muted/50 border border-border rounded-xl"
             />
           </div>
@@ -103,6 +143,7 @@ const EditProfile = () => {
               id="address"
               value={formData.address}
               onChange={(e) => handleChange("address", e.target.value)}
+              placeholder="Enter your address"
               className="h-12 bg-muted/50 border border-border rounded-xl"
             />
           </div>
@@ -113,6 +154,7 @@ const EditProfile = () => {
               id="city"
               value={formData.city}
               onChange={(e) => handleChange("city", e.target.value)}
+              placeholder="Enter your city"
               className="h-12 bg-muted/50 border border-border rounded-xl"
             />
           </div>
@@ -123,17 +165,23 @@ const EditProfile = () => {
               id="zipCode"
               value={formData.zipCode}
               onChange={(e) => handleChange("zipCode", e.target.value)}
+              placeholder="Enter your ZIP code"
               className="h-12 bg-muted/50 border border-border rounded-xl"
             />
           </div>
         </div>
 
-        <Button 
+        <Button
           onClick={handleSave}
+          disabled={saving}
           className="w-full h-12 mt-6 gap-2"
         >
-          <Save className="w-4 h-4" />
-          Save Changes
+          {saving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          {saving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
     </div>
