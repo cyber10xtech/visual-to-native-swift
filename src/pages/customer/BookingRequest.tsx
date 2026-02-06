@@ -52,8 +52,21 @@ const BookingRequest = () => {
       return;
     }
 
-    if (!formData.serviceType || !formData.scheduledDate) {
+    if (!formData.serviceType.trim() || !formData.scheduledDate) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (formData.serviceType.length > 200) {
+      toast.error("Service type must be under 200 characters");
+      return;
+    }
+    if (formData.description && formData.description.length > 2000) {
+      toast.error("Description must be under 2000 characters");
+      return;
+    }
+    if (formData.notes && formData.notes.length > 1000) {
+      toast.error("Notes must be under 1000 characters");
       return;
     }
 
@@ -119,6 +132,7 @@ const BookingRequest = () => {
               value={formData.serviceType}
               onChange={(e) => handleChange("serviceType", e.target.value)}
               required
+              maxLength={200}
               className="h-12 rounded-xl"
             />
           </div>
@@ -131,6 +145,7 @@ const BookingRequest = () => {
               placeholder="Describe the work you need done..."
               value={formData.description}
               onChange={(e) => handleChange("description", e.target.value)}
+              maxLength={2000}
               className="rounded-xl min-h-[100px]"
             />
           </div>
@@ -194,6 +209,7 @@ const BookingRequest = () => {
               placeholder="Any additional information..."
               value={formData.notes}
               onChange={(e) => handleChange("notes", e.target.value)}
+              maxLength={1000}
               className="rounded-xl"
             />
           </div>
