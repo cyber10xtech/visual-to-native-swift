@@ -60,6 +60,26 @@ Deno.serve(async (req) => {
     // --- Parse and validate payload ---
     const payload: PushPayload = await req.json();
 
+    // Input validation
+    if (!payload.userId || typeof payload.userId !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Missing or invalid userId' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (!payload.title || typeof payload.title !== 'string' || payload.title.length > 200) {
+      return new Response(
+        JSON.stringify({ error: 'Title is required and must be under 200 characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (!payload.body || typeof payload.body !== 'string' || payload.body.length > 1000) {
+      return new Response(
+        JSON.stringify({ error: 'Body is required and must be under 1000 characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Only allow sending notifications to yourself (prevent impersonation)
     if (payload.userId !== callerUserId) {
       return new Response(
