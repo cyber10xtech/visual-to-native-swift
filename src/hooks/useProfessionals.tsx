@@ -13,7 +13,7 @@ const sanitizeSearchInput = (input: string, maxLength = 100): string => {
   return escapeIlikePattern(trimmed);
 };
 
-// Only select non-sensitive fields for public browsing (excludes phone_number, whatsapp_number)
+// Select all public profile fields (sensitive contact fields are now in profiles_private table)
 const PUBLIC_PROFILE_FIELDS = "id,user_id,account_type,full_name,profession,bio,location,daily_rate,contract_rate,skills,avatar_url,documents_uploaded,created_at,updated_at" as const;
 
 export const useProfessionals = () => {

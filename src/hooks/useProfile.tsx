@@ -2,6 +2,15 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
+export interface ProfilePrivate {
+  id: string;
+  profile_id: string;
+  phone_number: string | null;
+  whatsapp_number: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Profile {
   id: string;
   user_id: string;
@@ -10,8 +19,6 @@ export interface Profile {
   profession: string | null;
   bio: string | null;
   location: string | null;
-  phone_number: string | null;
-  whatsapp_number: string | null;
   daily_rate: string | null;
   contract_rate: string | null;
   skills: string[];
@@ -21,9 +28,14 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface ProfileWithContact extends Profile {
+  phone_number: string | null;
+  whatsapp_number: string | null;
+}
+
 export const useProfile = () => {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<ProfileWithContact | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [profileExists, setProfileExists] = useState<boolean | null>(null);
@@ -46,9 +58,26 @@ export const useProfile = () => {
           .maybeSingle();
 
         if (error) throw error;
-        
-        setProfile(data as Profile | null);
-        setProfileExists(data !== null);
+
+        if (data) {
+          // Fetch private contact data (owner-only via RLS)
+          const { data: privateData } = await supabase
+            .from("profiles_private")
+            .select("phone_number, whatsapp_number")
+            .eq("profile_id", data.id)
+            .maybeSingle();
+
+          const merged: ProfileWithContact = {
+            ...(data as Profile),
+            phone_number: privateData?.phone_number ?? null,
+            whatsapp_number: privateData?.whatsapp_number ?? null,
+          };
+          setProfile(merged);
+          setProfileExists(true);
+        } else {
+          setProfile(null);
+          setProfileExists(false);
+        }
       } catch (err) {
         setError(err as Error);
         setProfileExists(false);
@@ -60,25 +89,70 @@ export const useProfile = () => {
     fetchProfile();
   }, [user]);
 
-  const updateProfile = async (updates: Partial<Omit<Profile, "id" | "user_id" | "account_type" | "created_at" | "updated_at">>) => {
-    if (!user) return { error: new Error("Not authenticated") };
+  const updateProfile = async (updates: Partial<Omit<Profile, "id" | "user_id" | "account_type" | "created_at" | "updated_at">> & {
+    phone_number?: string | null;
+    whatsapp_number?: string | null;
+  }) => {
+    if (!user || !profile) return { error: new Error("Not authenticated") };
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update(updates)
-        .eq("user_id", user.id);
+      // Separate contact fields from profile fields
+      const { phone_number, whatsapp_number, ...profileUpdates } = updates;
 
-      if (error) throw error;
+      // Update main profile if there are profile fields to update
+      if (Object.keys(profileUpdates).length > 0) {
+        const { error } = await supabase
+          .from("profiles")
+          .update(profileUpdates)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      }
 
-      // Refetch profile
+      // Update private contact data if contact fields provided
+      if (phone_number !== undefined || whatsapp_number !== undefined) {
+        const contactUpdate: Record<string, string | null> = {};
+        if (phone_number !== undefined) contactUpdate.phone_number = phone_number;
+        if (whatsapp_number !== undefined) contactUpdate.whatsapp_number = whatsapp_number;
+
+        // Upsert: update if exists, insert if not
+        const { data: existing } = await supabase
+          .from("profiles_private")
+          .select("id")
+          .eq("profile_id", profile.id)
+          .maybeSingle();
+
+        if (existing) {
+          const { error } = await supabase
+            .from("profiles_private")
+            .update(contactUpdate)
+            .eq("profile_id", profile.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("profiles_private")
+            .insert({ profile_id: profile.id, ...contactUpdate });
+          if (error) throw error;
+        }
+      }
+
+      // Refetch full profile
       const { data } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
         .single();
 
-      setProfile(data as Profile);
+      const { data: privateData } = await supabase
+        .from("profiles_private")
+        .select("phone_number, whatsapp_number")
+        .eq("profile_id", data.id)
+        .maybeSingle();
+
+      setProfile({
+        ...(data as Profile),
+        phone_number: privateData?.phone_number ?? null,
+        whatsapp_number: privateData?.whatsapp_number ?? null,
+      });
       return { error: null };
     } catch (err) {
       return { error: err as Error };

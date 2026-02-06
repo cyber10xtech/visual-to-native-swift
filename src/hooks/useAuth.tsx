@@ -65,21 +65,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Create profile after successful signup
       if (data.user) {
-        const { error: profileError } = await supabase.from("profiles").insert({
+        const { data: profileRow, error: profileError } = await supabase.from("profiles").insert({
           user_id: data.user.id,
           account_type: profileData.accountType,
           full_name: profileData.fullName,
           profession: profileData.profession || null,
           bio: profileData.bio || null,
           location: profileData.location || null,
-          phone_number: profileData.phoneNumber || null,
-          whatsapp_number: profileData.whatsappNumber || null,
           daily_rate: profileData.dailyRate || null,
           contract_rate: profileData.contractRate || null,
           skills: profileData.skills || [],
-        });
+        }).select("id").single();
 
         if (profileError) throw profileError;
+
+        // Store sensitive contact info in separate private table
+        if (profileRow && (profileData.phoneNumber || profileData.whatsappNumber)) {
+          const { error: privateError } = await supabase.from("profiles_private").insert({
+            profile_id: profileRow.id,
+            phone_number: profileData.phoneNumber || null,
+            whatsapp_number: profileData.whatsappNumber || null,
+          });
+          if (privateError) throw privateError;
+        }
       }
 
       return { error: null };
