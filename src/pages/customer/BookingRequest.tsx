@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useBookings } from "@/hooks/useBookings";
@@ -34,10 +33,10 @@ const BookingRequest = () => {
   const [formData, setFormData] = useState({
     serviceType: "",
     description: "",
-    scheduledDate: "",
-    scheduledTime: "",
-    rateType: "daily" as "daily" | "contract",
-    notes: "",
+    bookingDate: "",
+    bookingTime: "",
+    amount: "",
+    duration: "",
   });
 
   const handleChange = (field: string, value: string) => {
@@ -52,7 +51,7 @@ const BookingRequest = () => {
       return;
     }
 
-    if (!formData.serviceType.trim() || !formData.scheduledDate) {
+    if (!formData.serviceType.trim() || !formData.bookingDate) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -65,21 +64,21 @@ const BookingRequest = () => {
       toast.error("Description must be under 2000 characters");
       return;
     }
-    if (formData.notes && formData.notes.length > 1000) {
-      toast.error("Notes must be under 1000 characters");
-      return;
-    }
 
     setIsLoading(true);
 
+    // Combine date and time into booking_date timestamp
+    const bookingDateTime = formData.bookingTime 
+      ? `${formData.bookingDate}T${formData.bookingTime}:00`
+      : `${formData.bookingDate}T00:00:00`;
+
     const { error } = await createBooking({
-      professional_id: professionalId,
+      pro_id: professionalId,
       service_type: formData.serviceType,
-      description: formData.description,
-      scheduled_date: formData.scheduledDate,
-      scheduled_time: formData.scheduledTime || undefined,
-      rate_type: formData.rateType,
-      notes: formData.notes || undefined,
+      description: formData.description || undefined,
+      booking_date: bookingDateTime,
+      duration: formData.duration || undefined,
+      amount: formData.amount ? parseFloat(formData.amount) : 0,
     });
 
     setIsLoading(false);
@@ -93,11 +92,9 @@ const BookingRequest = () => {
     if (professional) {
       await createNotification(
         professional.user_id,
-        'professional',
         'booking',
         'New Booking Request',
-        `You have a new booking request for ${formData.serviceType} on ${formData.scheduledDate}`,
-        { service_type: formData.serviceType, scheduled_date: formData.scheduledDate }
+        `You have a new booking request for ${formData.serviceType} on ${formData.bookingDate}`,
       );
     }
 
@@ -152,15 +149,15 @@ const BookingRequest = () => {
 
           {/* Date */}
           <div className="space-y-2">
-            <Label htmlFor="scheduledDate" className="flex items-center gap-2">
+            <Label htmlFor="bookingDate" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Preferred Date *
             </Label>
             <Input
-              id="scheduledDate"
+              id="bookingDate"
               type="date"
-              value={formData.scheduledDate}
-              onChange={(e) => handleChange("scheduledDate", e.target.value)}
+              value={formData.bookingDate}
+              onChange={(e) => handleChange("bookingDate", e.target.value)}
               required
               min={new Date().toISOString().split("T")[0]}
               className="h-12 rounded-xl"
@@ -169,48 +166,42 @@ const BookingRequest = () => {
 
           {/* Time */}
           <div className="space-y-2">
-            <Label htmlFor="scheduledTime" className="flex items-center gap-2">
+            <Label htmlFor="bookingTime" className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
               Preferred Time
             </Label>
             <Input
-              id="scheduledTime"
+              id="bookingTime"
               type="time"
-              value={formData.scheduledTime}
-              onChange={(e) => handleChange("scheduledTime", e.target.value)}
+              value={formData.bookingTime}
+              onChange={(e) => handleChange("bookingTime", e.target.value)}
               className="h-12 rounded-xl"
             />
           </div>
 
-          {/* Rate Type */}
+          {/* Amount */}
           <div className="space-y-2">
-            <Label>Rate Type</Label>
-            <RadioGroup
-              value={formData.rateType}
-              onValueChange={(value) => handleChange("rateType", value)}
-              className="flex gap-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="daily" id="daily" />
-                <Label htmlFor="daily" className="font-normal">Daily Rate</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="contract" id="contract" />
-                <Label htmlFor="contract" className="font-normal">Contract Rate</Label>
-              </div>
-            </RadioGroup>
+            <Label htmlFor="amount">Amount (₦)</Label>
+            <Input
+              id="amount"
+              type="number"
+              placeholder="Enter agreed amount"
+              value={formData.amount}
+              onChange={(e) => handleChange("amount", e.target.value)}
+              min="0"
+              className="h-12 rounded-xl"
+            />
           </div>
 
-          {/* Notes */}
+          {/* Duration */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Additional Notes</Label>
-            <Textarea
-              id="notes"
-              placeholder="Any additional information..."
-              value={formData.notes}
-              onChange={(e) => handleChange("notes", e.target.value)}
-              maxLength={1000}
-              className="rounded-xl"
+            <Label htmlFor="duration">Duration</Label>
+            <Input
+              id="duration"
+              placeholder="e.g., 2 hours, 1 day, 1 week"
+              value={formData.duration}
+              onChange={(e) => handleChange("duration", e.target.value)}
+              className="h-12 rounded-xl"
             />
           </div>
 

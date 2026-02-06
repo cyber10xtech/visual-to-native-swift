@@ -14,8 +14,9 @@ export interface ProfilePrivate {
 export interface Profile {
   id: string;
   user_id: string;
-  account_type: "professional" | "handyman";
+  account_type: "professional" | "handyman" | "customer";
   full_name: string;
+  email: string | null;
   profession: string | null;
   bio: string | null;
   location: string | null;
@@ -24,6 +25,13 @@ export interface Profile {
   skills: string[];
   avatar_url: string | null;
   documents_uploaded: boolean;
+  address: string | null;
+  city: string | null;
+  zip_code: string | null;
+  referral_code: string | null;
+  referral_credits: number;
+  interests: string[];
+  is_verified: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -68,7 +76,7 @@ export const useProfile = () => {
             .maybeSingle();
 
           const merged: ProfileWithContact = {
-            ...(data as Profile),
+            ...(data as unknown as Profile),
             phone_number: privateData?.phone_number ?? null,
             whatsapp_number: privateData?.whatsapp_number ?? null,
           };
@@ -96,10 +104,8 @@ export const useProfile = () => {
     if (!user || !profile) return { error: new Error("Not authenticated") };
 
     try {
-      // Separate contact fields from profile fields
       const { phone_number, whatsapp_number, ...profileUpdates } = updates;
 
-      // Update main profile if there are profile fields to update
       if (Object.keys(profileUpdates).length > 0) {
         const { error } = await supabase
           .from("profiles")
@@ -108,13 +114,11 @@ export const useProfile = () => {
         if (error) throw error;
       }
 
-      // Update private contact data if contact fields provided
       if (phone_number !== undefined || whatsapp_number !== undefined) {
         const contactUpdate: Record<string, string | null> = {};
         if (phone_number !== undefined) contactUpdate.phone_number = phone_number;
         if (whatsapp_number !== undefined) contactUpdate.whatsapp_number = whatsapp_number;
 
-        // Upsert: update if exists, insert if not
         const { data: existing } = await supabase
           .from("profiles_private")
           .select("id")
@@ -135,7 +139,6 @@ export const useProfile = () => {
         }
       }
 
-      // Refetch full profile
       const { data } = await supabase
         .from("profiles")
         .select("*")
@@ -149,7 +152,7 @@ export const useProfile = () => {
         .maybeSingle();
 
       setProfile({
-        ...(data as Profile),
+        ...(data as unknown as Profile),
         phone_number: privateData?.phone_number ?? null,
         whatsapp_number: privateData?.whatsapp_number ?? null,
       });
