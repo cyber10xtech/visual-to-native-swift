@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 interface PushPayload {
@@ -21,6 +21,7 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
@@ -32,11 +33,46 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // --- Authentication: verify JWT and extract caller identity ---
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const callerUserId = claimsData.claims.sub;
+
+    // --- Parse and validate payload ---
     const payload: PushPayload = await req.json();
 
+    // Only allow sending notifications to yourself (prevent impersonation)
+    if (payload.userId !== callerUserId) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: you can only send notifications to yourself' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Use service role client for reading subscriptions (bypasses RLS)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
     // Get user's push subscriptions
-    const { data: subscriptions, error: fetchError } = await supabase
+    const { data: subscriptions, error: fetchError } = await supabaseAdmin
       .from('push_subscriptions')
       .select('*')
       .eq('user_id', payload.userId);
@@ -81,7 +117,7 @@ Deno.serve(async (req) => {
 
         if (!response.ok && response.status === 410) {
           // Subscription expired, remove it
-          await supabase
+          await supabaseAdmin
             .from('push_subscriptions')
             .delete()
             .eq('id', sub.id);
@@ -103,10 +139,9 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error sending push notification:', error);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
@@ -122,7 +157,6 @@ async function sendWebPush(
   // For simplicity, we'll create a notification record instead of full web-push
   // In production, you'd use a proper web-push library or service
   console.log('Sending push to:', subscription.endpoint);
-  console.log('Payload:', payload);
   
   // Simulate successful push for now
   // In production, implement proper VAPID signing and push
