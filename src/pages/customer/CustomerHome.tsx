@@ -10,12 +10,37 @@ import { useNavigate } from "react-router-dom";
 import { useProfessionals } from "@/hooks/useProfessionals";
 
 const categories = [
-  { name: "Architect", icon: "architect" },
-  { name: "Project Manager", icon: "project-manager" },
-  { name: "Builder", icon: "builder" },
-  { name: "Interior Designer", icon: "interior-designer" },
-  { name: "Electrical Engineer", icon: "electrical-engineer" },
-  { name: "Structural Engineer", icon: "structural-engineer" },
+  { name: "Electrician", icon: "electrician" },
+  { name: "Plumber", icon: "plumber" },
+  { name: "Carpenter", icon: "carpenter" },
+  { name: "Painter", icon: "painter" },
+  { name: "Mason / Bricklayer", icon: "mason" },
+  { name: "Tiler", icon: "tiler" },
+  { name: "Welder", icon: "welder" },
+  { name: "AC / HVAC Technician", icon: "hvac" },
+  { name: "Generator Technician", icon: "generator" },
+  { name: "Auto Mechanic", icon: "mechanic" },
+  { name: "Roofer", icon: "roofer" },
+  { name: "Landscaper / Gardener", icon: "landscaper" },
+  { name: "Pest Control Specialist", icon: "pest" },
+  { name: "Locksmith", icon: "locksmith" },
+  { name: "Cleaner", icon: "cleaner" },
+  { name: "Furniture Maker", icon: "furniture" },
+  { name: "Aluminium Fabricator", icon: "aluminium" },
+  { name: "POP / Ceiling Installer", icon: "ceiling" },
+  { name: "Solar Panel Installer", icon: "solar" },
+  { name: "CCTV / Security Installer", icon: "security" },
+  { name: "Appliance Repair Technician", icon: "appliance" },
+  { name: "Phone / Laptop Repair", icon: "phone" },
+  { name: "Tailor / Fashion Designer", icon: "tailor" },
+  { name: "Barber / Hairstylist", icon: "barber" },
+  { name: "Makeup Artist", icon: "makeup" },
+  { name: "Photographer / Videographer", icon: "photographer" },
+  { name: "Event Planner / Decorator", icon: "event" },
+  { name: "Caterer / Cook", icon: "caterer" },
+  { name: "Driver", icon: "driver" },
+  { name: "Dispatch Rider", icon: "dispatch" },
+  { name: "Other", icon: "other" },
 ];
 
 const CustomerHome = () => {
@@ -124,7 +149,7 @@ const CustomerHome = () => {
             onClick={() => setShowAllCategories(!showAllCategories)}
             className="w-full text-center text-primary text-sm font-medium mt-3 hover:underline"
           >
-            {showAllCategories ? "Show Less" : `Show All Categories (22)`}
+            {showAllCategories ? "Show Less" : `Show All Categories (${categories.length})`}
           </button>
         </div>
 
