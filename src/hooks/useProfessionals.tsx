@@ -13,6 +13,9 @@ const sanitizeSearchInput = (input: string, maxLength = 100): string => {
   return escapeIlikePattern(trimmed);
 };
 
+// Only select non-sensitive fields for public browsing (excludes phone_number, whatsapp_number)
+const PUBLIC_PROFILE_FIELDS = "id,user_id,account_type,full_name,profession,bio,location,daily_rate,contract_rate,skills,documents_uploaded,created_at,updated_at" as const;
+
 export const useProfessionals = () => {
   const [professionals, setProfessionals] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +31,7 @@ export const useProfessionals = () => {
       setLoading(true);
       let query = supabase
         .from("profiles")
-        .select("*")
+        .select(PUBLIC_PROFILE_FIELDS)
         .order("created_at", { ascending: false });
 
       if (filters?.accountType) {
@@ -65,7 +68,7 @@ export const useProfessionals = () => {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select(PUBLIC_PROFILE_FIELDS)
         .eq("id", id)
         .single();
 
