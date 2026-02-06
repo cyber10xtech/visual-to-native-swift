@@ -16,45 +16,61 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
-          amount: number
-          booking_date: string | null
           created_at: string
           customer_id: string
           description: string | null
-          duration: string | null
           id: string
-          pro_id: string
+          notes: string | null
+          professional_id: string
+          rate_amount: number | null
+          rate_type: string | null
+          scheduled_date: string
+          scheduled_time: string | null
           service_type: string
           status: string
+          updated_at: string
         }
         Insert: {
-          amount?: number
-          booking_date?: string | null
           created_at?: string
           customer_id: string
           description?: string | null
-          duration?: string | null
           id?: string
-          pro_id: string
+          notes?: string | null
+          professional_id: string
+          rate_amount?: number | null
+          rate_type?: string | null
+          scheduled_date: string
+          scheduled_time?: string | null
           service_type: string
           status?: string
+          updated_at?: string
         }
         Update: {
-          amount?: number
-          booking_date?: string | null
           created_at?: string
           customer_id?: string
           description?: string | null
-          duration?: string | null
           id?: string
-          pro_id?: string
+          notes?: string | null
+          professional_id?: string
+          rate_amount?: number | null
+          rate_type?: string | null
+          scheduled_date?: string
+          scheduled_time?: string | null
           service_type?: string
           status?: string
+          updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "bookings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_professional_id_fkey"
-            columns: ["pro_id"]
+            columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -66,53 +82,118 @@ export type Database = {
           created_at: string
           customer_id: string
           id: string
-          pro_id: string
+          last_message_at: string | null
+          professional_id: string
         }
         Insert: {
           created_at?: string
           customer_id: string
           id?: string
-          pro_id: string
+          last_message_at?: string | null
+          professional_id: string
         }
         Update: {
           created_at?: string
           customer_id?: string
           id?: string
-          pro_id?: string
+          last_message_at?: string | null
+          professional_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "conversations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "conversations_professional_id_fkey"
-            columns: ["pro_id"]
+            columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
+      customer_profiles: {
+        Row: {
+          address: string | null
+          avatar_url: string | null
+          city: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          referral_code: string | null
+          referral_credits: number | null
+          updated_at: string
+          user_id: string
+          zip_code: string | null
+        }
+        Insert: {
+          address?: string | null
+          avatar_url?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          phone?: string | null
+          referral_code?: string | null
+          referral_credits?: number | null
+          updated_at?: string
+          user_id: string
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string | null
+          avatar_url?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          referral_code?: string | null
+          referral_credits?: number | null
+          updated_at?: string
+          user_id?: string
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           created_at: string
           customer_id: string
           id: string
-          pro_id: string
+          professional_id: string
         }
         Insert: {
           created_at?: string
           customer_id: string
           id?: string
-          pro_id: string
+          professional_id: string
         }
         Update: {
           created_at?: string
           customer_id?: string
           id?: string
-          pro_id?: string
+          professional_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "favorites_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "favorites_professional_id_fkey"
-            columns: ["pro_id"]
+            columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -125,24 +206,27 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
-          is_read: boolean | null
+          read_at: string | null
           sender_id: string
+          sender_type: string
         }
         Insert: {
           content: string
           conversation_id: string
           created_at?: string
           id?: string
-          is_read?: boolean | null
+          read_at?: string | null
           sender_id: string
+          sender_type: string
         }
         Update: {
           content?: string
           conversation_id?: string
           created_at?: string
           id?: string
-          is_read?: boolean | null
+          read_at?: string | null
           sender_id?: string
+          sender_type?: string
         }
         Relationships: [
           {
@@ -157,132 +241,87 @@ export type Database = {
       notifications: {
         Row: {
           created_at: string
-          description: string
+          data: Json | null
           id: string
-          is_read: boolean | null
+          message: string
+          read: boolean | null
           title: string
           type: string
           user_id: string
+          user_type: string
         }
         Insert: {
           created_at?: string
-          description: string
+          data?: Json | null
           id?: string
-          is_read?: boolean | null
+          message: string
+          read?: boolean | null
           title: string
           type: string
           user_id: string
+          user_type: string
         }
         Update: {
           created_at?: string
-          description?: string
+          data?: Json | null
           id?: string
-          is_read?: boolean | null
+          message?: string
+          read?: boolean | null
           title?: string
           type?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      pro_stats: {
-        Row: {
-          earnings: number | null
-          jobs: number | null
-          last_updated: string | null
-          pro_id: string
-          rating: number | null
-          views: number | null
-        }
-        Insert: {
-          earnings?: number | null
-          jobs?: number | null
-          last_updated?: string | null
-          pro_id: string
-          rating?: number | null
-          views?: number | null
-        }
-        Update: {
-          earnings?: number | null
-          jobs?: number | null
-          last_updated?: string | null
-          pro_id?: string
-          rating?: number | null
-          views?: number | null
+          user_type?: string
         }
         Relationships: []
       }
       profiles: {
         Row: {
-          account_type: string | null
-          address: string | null
+          account_type: string
           avatar_url: string | null
           bio: string | null
-          city: string | null
           contract_rate: string | null
           created_at: string
           daily_rate: string | null
           documents_uploaded: boolean | null
-          email: string | null
           full_name: string
           id: string
-          interests: string[] | null
-          is_verified: boolean | null
           location: string | null
           profession: string | null
-          referral_code: string | null
-          referral_credits: number | null
           skills: string[] | null
           updated_at: string
           user_id: string
-          zip_code: string | null
         }
         Insert: {
-          account_type?: string | null
-          address?: string | null
+          account_type: string
           avatar_url?: string | null
           bio?: string | null
-          city?: string | null
           contract_rate?: string | null
           created_at?: string
           daily_rate?: string | null
           documents_uploaded?: boolean | null
-          email?: string | null
           full_name: string
           id?: string
-          interests?: string[] | null
-          is_verified?: boolean | null
           location?: string | null
           profession?: string | null
-          referral_code?: string | null
-          referral_credits?: number | null
           skills?: string[] | null
           updated_at?: string
           user_id: string
-          zip_code?: string | null
         }
         Update: {
-          account_type?: string | null
-          address?: string | null
+          account_type?: string
           avatar_url?: string | null
           bio?: string | null
-          city?: string | null
           contract_rate?: string | null
           created_at?: string
           daily_rate?: string | null
           documents_uploaded?: boolean | null
-          email?: string | null
           full_name?: string
           id?: string
-          interests?: string[] | null
-          is_verified?: boolean | null
           location?: string | null
           profession?: string | null
-          referral_code?: string | null
-          referral_credits?: number | null
           skills?: string[] | null
           updated_at?: string
           user_id?: string
-          zip_code?: string | null
         }
         Relationships: []
       }
@@ -353,7 +392,7 @@ export type Database = {
           created_at: string
           customer_id: string
           id: string
-          pro_id: string
+          professional_id: string
           rating: number
         }
         Insert: {
@@ -362,7 +401,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           id?: string
-          pro_id: string
+          professional_id: string
           rating: number
         }
         Update: {
@@ -371,7 +410,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           id?: string
-          pro_id?: string
+          professional_id?: string
           rating?: number
         }
         Relationships: [
@@ -383,45 +422,26 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reviews_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customer_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reviews_professional_id_fkey"
-            columns: ["pro_id"]
+            columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
-      user_roles: {
-        Row: {
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      get_my_profile_id: { Args: never; Returns: string }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
       is_owner_of_profile: {
         Args: { profile_user_id: string }
         Returns: boolean
@@ -432,13 +452,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
-      booking_status_enum:
-        | "PENDING"
-        | "CONFIRMED"
-        | "IN_PROGRESS"
-        | "COMPLETED"
-        | "CANCELLED"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -565,15 +579,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["admin", "moderator", "user"],
-      booking_status_enum: [
-        "PENDING",
-        "CONFIRMED",
-        "IN_PROGRESS",
-        "COMPLETED",
-        "CANCELLED",
-      ],
-    },
+    Enums: {},
   },
 } as const

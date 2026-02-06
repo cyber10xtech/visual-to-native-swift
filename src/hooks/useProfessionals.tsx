@@ -14,7 +14,7 @@ const sanitizeSearchInput = (input: string, maxLength = 100): string => {
 };
 
 // Select all public profile fields (sensitive contact fields are now in profiles_private table)
-const PUBLIC_PROFILE_FIELDS = "id,user_id,account_type,full_name,profession,bio,location,daily_rate,contract_rate,skills,avatar_url,documents_uploaded,is_verified,created_at,updated_at" as const;
+const PUBLIC_PROFILE_FIELDS = "id,user_id,account_type,full_name,profession,bio,location,daily_rate,contract_rate,skills,avatar_url,documents_uploaded,created_at,updated_at" as const;
 
 export const useProfessionals = () => {
   const [professionals, setProfessionals] = useState<Profile[]>([]);
@@ -32,8 +32,11 @@ export const useProfessionals = () => {
       let query = supabase
         .from("profiles")
         .select(PUBLIC_PROFILE_FIELDS)
-        .in("account_type", filters?.accountType ? [filters.accountType] : ["professional", "handyman"])
         .order("created_at", { ascending: false });
+
+      if (filters?.accountType) {
+        query = query.eq("account_type", filters.accountType);
+      }
       if (filters?.profession) {
         query = query.eq("profession", filters.profession);
       }

@@ -7,14 +7,17 @@ import type { Profile } from "./useProfile";
 export interface Booking {
   id: string;
   customer_id: string;
-  pro_id: string;
+  professional_id: string;
   service_type: string;
   description: string | null;
-  booking_date: string;
-  duration: string | null;
-  status: "PENDING" | "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
-  amount: number;
+  scheduled_date: string;
+  scheduled_time: string | null;
+  status: "pending" | "confirmed" | "in_progress" | "completed" | "cancelled";
+  rate_type: "daily" | "contract" | null;
+  rate_amount: number | null;
+  notes: string | null;
   created_at: string;
+  updated_at: string;
   professional?: Profile;
 }
 
@@ -36,31 +39,15 @@ export const useBookings = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("bookings")
-        .select("*")
+        .select(`
+          *,
+          professional:profiles(*)
+        `)
         .eq("customer_id", profile.id)
-        .order("booking_date", { ascending: false });
+        .order("scheduled_date", { ascending: false });
 
       if (error) throw error;
-
-      // Fetch professional data for bookings
-      const proIds = [...new Set((data || []).map(b => b.pro_id))];
-      let professionals: Record<string, Profile> = {};
-      if (proIds.length > 0) {
-        const { data: proData } = await supabase
-          .from("profiles")
-          .select("*")
-          .in("id", proIds);
-        if (proData) {
-          professionals = Object.fromEntries(proData.map(p => [p.id, p as unknown as Profile]));
-        }
-      }
-
-      const bookingsWithPros = (data || []).map(b => ({
-        ...b,
-        professional: professionals[b.pro_id] || undefined,
-      })) as Booking[];
-
-      setBookings(bookingsWithPros);
+      setBookings((data as Booking[]) || []);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -73,12 +60,14 @@ export const useBookings = () => {
   }, [profile?.id]);
 
   const createBooking = async (bookingData: {
-    pro_id: string;
+    professional_id: string;
     service_type: string;
     description?: string;
-    booking_date: string;
-    duration?: string;
-    amount?: number;
+    scheduled_date: string;
+    scheduled_time?: string;
+    rate_type?: "daily" | "contract";
+    rate_amount?: number;
+    notes?: string;
   }) => {
     if (!profile?.id) return { error: new Error("No customer profile") };
 
@@ -104,7 +93,7 @@ export const useBookings = () => {
     try {
       const { error } = await supabase
         .from("bookings")
-        .update({ status })
+        .update({ status, updated_at: new Date().toISOString() })
         .eq("id", bookingId);
 
       if (error) throw error;

@@ -157,7 +157,7 @@ const CustomerHub = () => {
                 {favorites.map((fav) => (
                   <ProfessionalCard
                     key={fav.id}
-                    id={fav.pro_id}
+                    id={fav.professional_id}
                     name={fav.professional?.full_name || "Professional"}
                     profession={fav.professional?.profession || "Professional"}
                     location={fav.professional?.location || "Location not set"}
@@ -168,8 +168,8 @@ const CustomerHub = () => {
                     dailyRate={fav.professional?.daily_rate ? parseInt(fav.professional.daily_rate) : 0}
                     variant="favorite"
                     isFavorite={true}
-                    onBook={() => navigate(`/professional/${fav.pro_id}`)}
-                    onFavoriteToggle={() => handleToggleFavorite(fav.pro_id)}
+                    onBook={() => navigate(`/professional/${fav.professional_id}`)}
+                    onFavoriteToggle={() => handleToggleFavorite(fav.professional_id)}
                   />
                 ))}
               </div>
