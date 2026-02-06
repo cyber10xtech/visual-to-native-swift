@@ -22,6 +22,7 @@ export const useProfessionals = () => {
     profession?: string;
     location?: string;
     search?: string;
+    accountType?: "professional" | "handyman";
   }) => {
     try {
       setLoading(true);
@@ -30,6 +31,9 @@ export const useProfessionals = () => {
         .select("*")
         .order("created_at", { ascending: false });
 
+      if (filters?.accountType) {
+        query = query.eq("account_type", filters.accountType);
+      }
       if (filters?.profession) {
         query = query.eq("profession", filters.profession);
       }

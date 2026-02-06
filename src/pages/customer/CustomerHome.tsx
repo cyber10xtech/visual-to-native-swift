@@ -62,7 +62,11 @@ const CustomerHome = () => {
               key={tab}
               variant={activeTab === tab ? "default" : "outline"}
               size="sm"
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                const accountType = tab === "professionals" ? "professional" : tab === "handymen" ? "handyman" : undefined;
+                fetchProfessionals({ search: searchQuery, accountType });
+              }}
               className="capitalize rounded-full"
             >
               {tab === "all" ? "All" : tab}
