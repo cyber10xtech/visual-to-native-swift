@@ -277,6 +277,7 @@ export type Database = {
       profiles: {
         Row: {
           account_type: string
+          avatar_url: string | null
           bio: string | null
           contract_rate: string | null
           created_at: string
@@ -294,6 +295,7 @@ export type Database = {
         }
         Insert: {
           account_type: string
+          avatar_url?: string | null
           bio?: string | null
           contract_rate?: string | null
           created_at?: string
@@ -311,6 +313,7 @@ export type Database = {
         }
         Update: {
           account_type?: string
+          avatar_url?: string | null
           bio?: string | null
           contract_rate?: string | null
           created_at?: string

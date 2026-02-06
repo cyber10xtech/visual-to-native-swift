@@ -157,6 +157,7 @@ const CustomerHome = () => {
                   rating={4.8}
                   reviewCount={0}
                   distance=""
+                  avatarUrl={professional.avatar_url || undefined}
                   dailyRate={professional.daily_rate ? parseInt(professional.daily_rate) : 0}
                   variant="compact"
                   onView={() => navigate(`/professional/${professional.id}`)}
