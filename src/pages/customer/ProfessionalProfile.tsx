@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react";
 import { 
   ArrowLeft, 
-  Phone, 
-  MessageCircle, 
   Star, 
   MapPin, 
   Clock, 
   Calendar,
-  Briefcase,
   CheckCircle2,
   Loader2
 } from "lucide-react";
@@ -123,27 +120,15 @@ const ProfessionalProfile = () => {
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Buttons - Contact info available after booking */}
             <div className="flex gap-3 mt-4">
-              {professional.phone_number && (
-                <Button 
-                  className="flex-1 gap-2"
-                  onClick={() => window.location.href = `tel:${professional.phone_number}`}
-                >
-                  <Phone className="w-4 h-4" />
-                  Call
-                </Button>
-              )}
-              {professional.whatsapp_number && (
-                <Button 
-                  variant="default"
-                  className="flex-1 gap-2 bg-success hover:bg-success/90"
-                  onClick={() => window.location.href = `https://wa.me/${professional.whatsapp_number?.replace(/\D/g, '')}`}
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  WhatsApp
-                </Button>
-              )}
+              <Button 
+                className="flex-1 gap-2"
+                onClick={() => navigate(`/book/${id}`)}
+              >
+                <Calendar className="w-4 h-4" />
+                Book Now
+              </Button>
             </div>
           </CardContent>
         </Card>

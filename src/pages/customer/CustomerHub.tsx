@@ -30,9 +30,9 @@ const CustomerHub = () => {
   };
 
   // Filter emergency professionals (those with certain professions)
-  const emergencyProfessions = ["Plumber", "Electrician", "HVAC", "Locksmith"];
+  const emergencyProfessions = ["Plumber", "Electrician", "AC / HVAC Technician", "Locksmith", "Generator Technician"];
   const emergencyProfessionals = professionals.filter(p => 
-    emergencyProfessions.some(ep => p.profession?.toLowerCase().includes(ep.toLowerCase()))
+    emergencyProfessions.some(ep => p.profession?.toLowerCase() === ep.toLowerCase())
   );
 
   const hubTabs = [
@@ -232,7 +232,7 @@ const CustomerHub = () => {
                     dailyRate={professional.daily_rate ? parseInt(professional.daily_rate) : 0}
                     variant="emergency"
                     onView={() => navigate(`/professional/${professional.id}`)}
-                    onCall={() => window.open(`tel:${professional.phone_number}`, '_self')}
+                    onCall={() => navigate(`/book/${professional.id}`)}
                   />
                 ))}
               </div>

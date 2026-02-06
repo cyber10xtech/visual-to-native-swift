@@ -30,7 +30,8 @@ const ForgotPassword = () => {
     setLoading(false);
 
     if (error) {
-      toast.error(error.message || "Failed to send reset email");
+      // Generic message to prevent user enumeration
+      toast.error("Unable to process your request. Please try again later.");
       return;
     }
 
