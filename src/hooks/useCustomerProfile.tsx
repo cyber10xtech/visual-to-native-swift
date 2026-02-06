@@ -31,7 +31,7 @@ export const useCustomerProfile = () => {
       return;
     }
 
-    const fetchProfile = async () => {
+    const fetchOrCreateProfile = async () => {
       try {
         setLoading(true);
         const { data, error } = await supabase
@@ -41,7 +41,28 @@ export const useCustomerProfile = () => {
           .maybeSingle();
 
         if (error) throw error;
-        setProfile(data);
+
+        if (data) {
+          setProfile(data);
+        } else {
+          // Profile not found — auto-create as fallback
+          const referralCode = `SAFE${user.id.slice(0, 6).toUpperCase()}`;
+          const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "Customer";
+
+          const { data: newProfile, error: insertError } = await supabase
+            .from("customer_profiles")
+            .insert({
+              user_id: user.id,
+              full_name: fullName,
+              email: user.email,
+              referral_code: referralCode,
+            })
+            .select()
+            .single();
+
+          if (insertError) throw insertError;
+          setProfile(newProfile);
+        }
       } catch (err) {
         setError(err as Error);
       } finally {
@@ -49,7 +70,7 @@ export const useCustomerProfile = () => {
       }
     };
 
-    fetchProfile();
+    fetchOrCreateProfile();
   }, [user]);
 
   const createProfile = async (profileData: Partial<CustomerProfile>) => {

@@ -38,33 +38,18 @@ const CustomerRegister = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/home`,
+          data: {
+            full_name: formData.fullName,
+          },
         },
       });
 
       if (error) throw error;
-
-      // Create customer profile
-      if (data.user) {
-        const referralCode = `SAFE${data.user.id.slice(0, 6).toUpperCase()}`;
-        
-        const { error: profileError } = await supabase
-          .from("customer_profiles")
-          .insert({
-            user_id: data.user.id,
-            full_name: formData.fullName,
-            email: formData.email,
-            referral_code: referralCode,
-          });
-
-        if (profileError && import.meta.env.DEV) {
-          console.error("Profile creation error:", profileError);
-        }
-      }
 
       toast.success("Account created! Please check your email to verify your account.");
       navigate("/sign-in");
