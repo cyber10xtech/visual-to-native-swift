@@ -1,17 +1,36 @@
 import { cn } from "@/lib/utils";
 import { 
-  Building2, 
-  Users, 
-  Hammer, 
-  Palette, 
   Zap, 
-  Building,
-  Wrench,
-  Paintbrush,
-  Droplets,
-  TreePine,
-  Wind,
-  Shield
+  Droplets, 
+  Hammer, 
+  Paintbrush, 
+  Box,
+  Grid3X3, 
+  Flame, 
+  Wind, 
+  Cog, 
+  Car, 
+  Home, 
+  TreePine, 
+  Bug, 
+  KeyRound, 
+  Sparkles, 
+  Sofa, 
+  PanelTop, 
+  CircleDot, 
+  Sun, 
+  Shield, 
+  Wrench, 
+  Smartphone, 
+  Scissors, 
+  ScissorsLineDashed, 
+  Palette, 
+  Camera, 
+  PartyPopper, 
+  UtensilsCrossed, 
+  CarFront, 
+  Bike, 
+  MoreHorizontal
 } from "lucide-react";
 
 interface CategoryCardProps {
@@ -22,23 +41,41 @@ interface CategoryCardProps {
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  architect: Building2,
-  "project-manager": Users,
-  builder: Hammer,
-  "interior-designer": Palette,
-  "electrical-engineer": Zap,
-  "structural-engineer": Building,
-  plumber: Droplets,
   electrician: Zap,
-  carpenter: Wrench,
+  plumber: Droplets,
+  carpenter: Hammer,
   painter: Paintbrush,
-  landscaper: TreePine,
+  mason: Box,
+  tiler: Grid3X3,
+  welder: Flame,
   hvac: Wind,
+  generator: Cog,
+  mechanic: Car,
+  roofer: Home,
+  landscaper: TreePine,
+  pest: Bug,
+  locksmith: KeyRound,
+  cleaner: Sparkles,
+  furniture: Sofa,
+  aluminium: PanelTop,
+  ceiling: CircleDot,
+  solar: Sun,
   security: Shield,
+  appliance: Wrench,
+  phone: Smartphone,
+  tailor: Scissors,
+  barber: ScissorsLineDashed,
+  makeup: Palette,
+  photographer: Camera,
+  event: PartyPopper,
+  caterer: UtensilsCrossed,
+  driver: CarFront,
+  dispatch: Bike,
+  other: MoreHorizontal,
 };
 
 const CategoryCard = ({ name, icon, onClick, isSelected }: CategoryCardProps) => {
-  const IconComponent = iconMap[icon.toLowerCase()] || Building2;
+  const IconComponent = iconMap[icon.toLowerCase()] || MoreHorizontal;
 
   return (
     <button
