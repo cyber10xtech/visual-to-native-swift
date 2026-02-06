@@ -47,6 +47,7 @@ const CustomerHome = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "professionals" | "handymen">("all");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState("Newest First");
   const [showAllCategories, setShowAllCategories] = useState(false);
   
@@ -60,7 +61,9 @@ const CustomerHome = () => {
   };
 
   const handleCategoryClick = (categoryName: string) => {
-    fetchProfessionals({ profession: categoryName });
+    const newCategory = selectedCategory === categoryName ? null : categoryName;
+    setSelectedCategory(newCategory);
+    fetchProfessionals({ profession: newCategory || undefined, search: searchQuery });
   };
 
   return (
@@ -141,6 +144,7 @@ const CustomerHome = () => {
                 key={category.name}
                 name={category.name}
                 icon={category.icon}
+                isSelected={selectedCategory === category.name}
                 onClick={() => handleCategoryClick(category.name)}
               />
             ))}
