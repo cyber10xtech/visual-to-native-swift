@@ -10,8 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Conversation {
   id: string;
-  professional_id: string;
-  last_message_at: string | null;
+  pro_id: string;
   professional?: {
     full_name: string;
     profession: string | null;
@@ -34,9 +33,9 @@ const CustomerMessages = () => {
 
   const fetchConversations = async () => {
     try {
-      // First get customer profile id
+      // Get customer profile id from unified profiles table
       const { data: customerProfile } = await supabase
-        .from("customer_profiles")
+        .from("profiles")
         .select("id")
         .eq("user_id", user?.id)
         .single();
@@ -46,28 +45,32 @@ const CustomerMessages = () => {
         return;
       }
 
-      // Then fetch conversations
+      // Fetch conversations
       const { data, error } = await supabase
         .from("conversations")
-        .select(`
-          id,
-          professional_id,
-          last_message_at,
-          profiles!conversations_professional_id_fkey (
-            full_name,
-            profession
-          )
-        `)
+        .select("id, pro_id, created_at")
         .eq("customer_id", customerProfile.id)
-        .order("last_message_at", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      const formattedConversations = (data || []).map((conv: any) => ({
+      // Fetch professional data for conversations
+      const proIds = [...new Set((data || []).map(c => c.pro_id))];
+      let professionals: Record<string, { full_name: string; profession: string | null }> = {};
+      if (proIds.length > 0) {
+        const { data: proData } = await supabase
+          .from("profiles")
+          .select("id, full_name, profession")
+          .in("id", proIds);
+        if (proData) {
+          professionals = Object.fromEntries(proData.map(p => [p.id, { full_name: p.full_name, profession: p.profession }]));
+        }
+      }
+
+      const formattedConversations = (data || []).map((conv) => ({
         id: conv.id,
-        professional_id: conv.professional_id,
-        last_message_at: conv.last_message_at,
-        professional: conv.profiles,
+        pro_id: conv.pro_id,
+        professional: professionals[conv.pro_id] || undefined,
         lastMessage: "Start chatting...",
         unreadCount: 0,
       }));
@@ -115,16 +118,9 @@ const CustomerMessages = () => {
                 </Avatar>
 
                 <div className="flex-1 min-w-0 text-left">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-semibold text-foreground truncate">
-                      {conversation.professional?.full_name || "Professional"}
-                    </h3>
-                    <span className="text-xs text-muted-foreground flex-shrink-0">
-                      {conversation.last_message_at 
-                        ? new Date(conversation.last_message_at).toLocaleDateString()
-                        : ""}
-                    </span>
-                  </div>
+                  <h3 className="font-semibold text-foreground truncate">
+                    {conversation.professional?.full_name || "Professional"}
+                  </h3>
                   <p className="text-sm text-muted-foreground truncate">
                     {conversation.professional?.profession || "Professional"}
                   </p>
