@@ -22,7 +22,7 @@ const CustomerHome = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "professionals" | "handymen">("all");
-  const [sortBy, setSortBy] = useState("Top Rated");
+  const [sortBy, setSortBy] = useState("Newest First");
   const [showAllCategories, setShowAllCategories] = useState(false);
   
   const { professionals, loading, fetchProfessionals } = useProfessionals();
@@ -131,7 +131,7 @@ const CustomerHome = () => {
         {/* Top Rated Professionals */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-foreground">Top Rated Professionals</h2>
+            <h2 className="font-semibold text-foreground">New Professionals</h2>
             <Badge variant="secondary" className="text-xs">
               {professionals.length}
             </Badge>
