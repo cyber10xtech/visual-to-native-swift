@@ -27,11 +27,11 @@ const CustomerSignIn = () => {
     setLoading(false);
 
     if (error) {
-      // Check for email not confirmed error
+      // Map auth errors to generic messages to prevent information leakage
       if (error.message.includes("Email not confirmed")) {
         toast.error("Please verify your email before signing in. Check your inbox for the verification link.");
       } else {
-        toast.error(error.message || "Failed to sign in");
+        toast.error("Invalid email or password. Please try again.");
       }
       return;
     }

@@ -54,7 +54,12 @@ const CustomerRegister = () => {
       toast.success("Account created! Please check your email to verify your account.");
       navigate("/sign-in");
     } catch (error: any) {
-      toast.error(error.message || "Failed to create account");
+      // Map to generic message to prevent user enumeration
+      if (error.message?.includes("already registered")) {
+        toast.error("Unable to create account. Please try a different email or sign in.");
+      } else {
+        toast.error("Registration failed. Please check your details and try again.");
+      }
     } finally {
       setIsLoading(false);
     }

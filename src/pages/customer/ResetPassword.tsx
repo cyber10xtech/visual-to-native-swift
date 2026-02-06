@@ -49,7 +49,8 @@ const ResetPassword = () => {
     setLoading(false);
 
     if (error) {
-      toast.error(error.message || "Failed to reset password");
+      // Generic message to avoid leaking system details
+      toast.error("Unable to reset password. Please try again or request a new reset link.");
       return;
     }
 
