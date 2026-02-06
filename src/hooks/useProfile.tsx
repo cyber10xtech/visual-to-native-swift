@@ -15,6 +15,7 @@ export interface Profile {
   daily_rate: string | null;
   contract_rate: string | null;
   skills: string[];
+  avatar_url: string | null;
   documents_uploaded: boolean;
   created_at: string;
   updated_at: string;

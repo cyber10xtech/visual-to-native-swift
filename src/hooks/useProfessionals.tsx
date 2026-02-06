@@ -14,7 +14,7 @@ const sanitizeSearchInput = (input: string, maxLength = 100): string => {
 };
 
 // Only select non-sensitive fields for public browsing (excludes phone_number, whatsapp_number)
-const PUBLIC_PROFILE_FIELDS = "id,user_id,account_type,full_name,profession,bio,location,daily_rate,contract_rate,skills,documents_uploaded,created_at,updated_at" as const;
+const PUBLIC_PROFILE_FIELDS = "id,user_id,account_type,full_name,profession,bio,location,daily_rate,contract_rate,skills,avatar_url,documents_uploaded,created_at,updated_at" as const;
 
 export const useProfessionals = () => {
   const [professionals, setProfessionals] = useState<Profile[]>([]);
