@@ -7,17 +7,14 @@ import type { Profile } from "./useProfile";
 export interface Booking {
   id: string;
   customer_id: string;
-  professional_id: string;
+  pro_id: string;
   service_type: string;
   description: string | null;
-  scheduled_date: string;
-  scheduled_time: string | null;
-  status: "pending" | "confirmed" | "in_progress" | "completed" | "cancelled";
-  rate_type: "daily" | "contract" | null;
-  rate_amount: number | null;
-  notes: string | null;
+  booking_date: string | null;
+  duration: string | null;
+  amount: number;
+  status: string;
   created_at: string;
-  updated_at: string;
   professional?: Profile;
 }
 
@@ -41,13 +38,13 @@ export const useBookings = () => {
         .from("bookings")
         .select(`
           *,
-          professional:profiles(*)
+          professional:profiles!bookings_pro_id_fkey(*)
         `)
         .eq("customer_id", profile.id)
-        .order("scheduled_date", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setBookings((data as Booking[]) || []);
+      setBookings((data as unknown as Booking[]) || []);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -60,14 +57,12 @@ export const useBookings = () => {
   }, [profile?.id]);
 
   const createBooking = async (bookingData: {
-    professional_id: string;
+    pro_id: string;
     service_type: string;
     description?: string;
-    scheduled_date: string;
-    scheduled_time?: string;
-    rate_type?: "daily" | "contract";
-    rate_amount?: number;
-    notes?: string;
+    booking_date: string;
+    duration?: string;
+    amount?: number;
   }) => {
     if (!profile?.id) return { error: new Error("No customer profile") };
 
@@ -76,7 +71,12 @@ export const useBookings = () => {
         .from("bookings")
         .insert({
           customer_id: profile.id,
-          ...bookingData,
+          pro_id: bookingData.pro_id,
+          service_type: bookingData.service_type,
+          description: bookingData.description,
+          booking_date: bookingData.booking_date,
+          duration: bookingData.duration,
+          amount: bookingData.amount || 0,
         })
         .select()
         .single();
@@ -89,11 +89,11 @@ export const useBookings = () => {
     }
   };
 
-  const updateBookingStatus = async (bookingId: string, status: Booking["status"]) => {
+  const updateBookingStatus = async (bookingId: string, status: string) => {
     try {
       const { error } = await supabase
         .from("bookings")
-        .update({ status, updated_at: new Date().toISOString() })
+        .update({ status })
         .eq("id", bookingId);
 
       if (error) throw error;

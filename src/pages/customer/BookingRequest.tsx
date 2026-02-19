@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useBookings } from "@/hooks/useBookings";
@@ -36,8 +35,6 @@ const BookingRequest = () => {
     description: "",
     scheduledDate: "",
     scheduledTime: "",
-    rateType: "daily" as "daily" | "contract",
-    notes: "",
   });
 
   const handleChange = (field: string, value: string) => {
@@ -57,29 +54,17 @@ const BookingRequest = () => {
       return;
     }
 
-    if (formData.serviceType.length > 200) {
-      toast.error("Service type must be under 200 characters");
-      return;
-    }
-    if (formData.description && formData.description.length > 2000) {
-      toast.error("Description must be under 2000 characters");
-      return;
-    }
-    if (formData.notes && formData.notes.length > 1000) {
-      toast.error("Notes must be under 1000 characters");
-      return;
-    }
-
     setIsLoading(true);
 
+    const bookingDate = formData.scheduledTime 
+      ? `${formData.scheduledDate}T${formData.scheduledTime}:00`
+      : `${formData.scheduledDate}T00:00:00`;
+
     const { error } = await createBooking({
-      professional_id: professionalId,
+      pro_id: professionalId,
       service_type: formData.serviceType,
-      description: formData.description,
-      scheduled_date: formData.scheduledDate,
-      scheduled_time: formData.scheduledTime || undefined,
-      rate_type: formData.rateType,
-      notes: formData.notes || undefined,
+      description: formData.description || undefined,
+      booking_date: bookingDate,
     });
 
     setIsLoading(false);
@@ -93,11 +78,9 @@ const BookingRequest = () => {
     if (professional) {
       await createNotification(
         professional.user_id,
-        'professional',
         'booking',
         'New Booking Request',
         `You have a new booking request for ${formData.serviceType} on ${formData.scheduledDate}`,
-        { service_type: formData.serviceType, scheduled_date: formData.scheduledDate }
       );
     }
 
@@ -179,38 +162,6 @@ const BookingRequest = () => {
               value={formData.scheduledTime}
               onChange={(e) => handleChange("scheduledTime", e.target.value)}
               className="h-12 rounded-xl"
-            />
-          </div>
-
-          {/* Rate Type */}
-          <div className="space-y-2">
-            <Label>Rate Type</Label>
-            <RadioGroup
-              value={formData.rateType}
-              onValueChange={(value) => handleChange("rateType", value)}
-              className="flex gap-4"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="daily" id="daily" />
-                <Label htmlFor="daily" className="font-normal">Daily Rate</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="contract" id="contract" />
-                <Label htmlFor="contract" className="font-normal">Contract Rate</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Additional Notes</Label>
-            <Textarea
-              id="notes"
-              placeholder="Any additional information..."
-              value={formData.notes}
-              onChange={(e) => handleChange("notes", e.target.value)}
-              maxLength={1000}
-              className="rounded-xl"
             />
           </div>
 

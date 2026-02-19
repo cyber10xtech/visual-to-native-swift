@@ -16,7 +16,6 @@ const EditProfile = () => {
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
-    phone: "",
     address: "",
     city: "",
     zipCode: "",
@@ -27,7 +26,6 @@ const EditProfile = () => {
       setFormData({
         fullName: profile.full_name || "",
         email: profile.email || "",
-        phone: profile.phone || "",
         address: profile.address || "",
         city: profile.city || "",
         zipCode: profile.zip_code || "",
@@ -44,7 +42,6 @@ const EditProfile = () => {
     const { error } = await updateProfile({
       full_name: formData.fullName,
       email: formData.email,
-      phone: formData.phone,
       address: formData.address,
       city: formData.city,
       zip_code: formData.zipCode,
@@ -123,17 +120,6 @@ const EditProfile = () => {
               value={formData.email}
               disabled
               className="h-12 bg-muted/50 border border-border rounded-xl opacity-60"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => handleChange("phone", e.target.value)}
-              placeholder="Enter your phone number"
-              className="h-12 bg-muted/50 border border-border rounded-xl"
             />
           </div>
 
