@@ -6,7 +6,7 @@ import type { Profile } from "./useProfile";
 export interface Favorite {
   id: string;
   customer_id: string;
-  professional_id: string;
+  pro_id: string;
   created_at: string;
   professional?: Profile;
 }
@@ -30,13 +30,13 @@ export const useFavorites = () => {
         .from("favorites")
         .select(`
           *,
-          professional:profiles(*)
+          professional:profiles!favorites_professional_id_fkey(*)
         `)
         .eq("customer_id", profile.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setFavorites((data as Favorite[]) || []);
+      setFavorites((data as unknown as Favorite[]) || []);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -56,7 +56,7 @@ export const useFavorites = () => {
         .from("favorites")
         .insert({
           customer_id: profile.id,
-          professional_id: professionalId,
+          pro_id: professionalId,
         });
 
       if (error) throw error;
@@ -75,7 +75,7 @@ export const useFavorites = () => {
         .from("favorites")
         .delete()
         .eq("customer_id", profile.id)
-        .eq("professional_id", professionalId);
+        .eq("pro_id", professionalId);
 
       if (error) throw error;
       await fetchFavorites();
@@ -86,7 +86,7 @@ export const useFavorites = () => {
   };
 
   const isFavorite = (professionalId: string) => {
-    return favorites.some(f => f.professional_id === professionalId);
+    return favorites.some(f => f.pro_id === professionalId);
   };
 
   return { favorites, loading, error, addFavorite, removeFavorite, isFavorite, refetch: fetchFavorites };

@@ -4,21 +4,19 @@ import { useAuth } from "./useAuth";
 
 const isDevelopment = import.meta.env.DEV;
 
-export interface Notification {
+export interface AppNotification {
   id: string;
   user_id: string;
-  user_type: string;
   type: string;
   title: string;
-  message: string;
-  data: Record<string, unknown> | null;
-  read: boolean | null;
+  description: string;
+  is_read: boolean | null;
   created_at: string;
 }
 
-export const useNotifications = (userType: 'customer' | 'professional' = 'customer') => {
+export const useNotifications = () => {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -36,19 +34,14 @@ export const useNotifications = (userType: 'customer' | 'professional' = 'custom
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
-        .eq('user_type', userType)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
 
-      const typedData = (data || []).map(n => ({
-        ...n,
-        data: n.data as Record<string, unknown> | null,
-      }));
-
+      const typedData = (data || []) as AppNotification[];
       setNotifications(typedData);
-      setUnreadCount(typedData.filter(n => !n.read).length);
+      setUnreadCount(typedData.filter(n => !n.is_read).length);
     } catch (error) {
       if (isDevelopment) {
         console.error('Error fetching notifications:', error);
@@ -56,13 +49,12 @@ export const useNotifications = (userType: 'customer' | 'professional' = 'custom
     } finally {
       setLoading(false);
     }
-  }, [user, userType]);
+  }, [user]);
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Subscribe to realtime notifications
   useEffect(() => {
     if (!user) return;
 
@@ -77,18 +69,15 @@ export const useNotifications = (userType: 'customer' | 'professional' = 'custom
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          const newNotification = payload.new as Notification;
-          if (newNotification.user_type === userType) {
-            setNotifications(prev => [newNotification, ...prev]);
-            setUnreadCount(prev => prev + 1);
+          const newNotification = payload.new as AppNotification;
+          setNotifications(prev => [newNotification, ...prev]);
+          setUnreadCount(prev => prev + 1);
 
-            // Show browser notification if permitted
-            if (Notification.permission === 'granted') {
-              new Notification(newNotification.title, {
-                body: newNotification.message,
-                icon: '/pwa-192x192.png',
-              });
-            }
+          if (typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'granted') {
+            new window.Notification(newNotification.title, {
+              body: newNotification.description,
+              icon: '/pwa-192x192.png',
+            });
           }
         }
       )
@@ -97,20 +86,20 @@ export const useNotifications = (userType: 'customer' | 'professional' = 'custom
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, userType]);
+  }, [user]);
 
   const markAsRead = async (notificationId: string) => {
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .update({ is_read: true })
         .eq('id', notificationId);
 
       if (error) throw error;
 
       setNotifications(prev =>
         prev.map(n =>
-          n.id === notificationId ? { ...n, read: true } : n
+          n.id === notificationId ? { ...n, is_read: true } : n
         )
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
@@ -127,14 +116,13 @@ export const useNotifications = (userType: 'customer' | 'professional' = 'custom
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .update({ is_read: true })
         .eq('user_id', user.id)
-        .eq('user_type', userType)
-        .eq('read', false);
+        .eq('is_read', false);
 
       if (error) throw error;
 
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (error) {
       if (isDevelopment) {
@@ -153,38 +141,21 @@ export const useNotifications = (userType: 'customer' | 'professional' = 'custom
   };
 };
 
-// Helper function to create a notification
 export const createNotification = async (
   userId: string,
-  userType: 'customer' | 'professional',
   type: string,
   title: string,
-  message: string,
-  data?: Record<string, string | number | boolean | null>
+  description: string,
 ) => {
   try {
-    const insertData: {
-      user_id: string;
-      user_type: string;
-      type: string;
-      title: string;
-      message: string;
-      data?: Record<string, string | number | boolean | null>;
-    } = {
-      user_id: userId,
-      user_type: userType,
-      type,
-      title,
-      message,
-    };
-    
-    if (data) {
-      insertData.data = data;
-    }
-
     const { error } = await supabase
       .from('notifications')
-      .insert([insertData]);
+      .insert({
+        user_id: userId,
+        type,
+        title,
+        description,
+      });
 
     if (error) throw error;
     return { error: null };

@@ -3,7 +3,7 @@ import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotifications, type AppNotification } from "@/hooks/useNotifications";
 
 const getIconForType = (type: string) => {
   switch (type) {
@@ -20,12 +20,12 @@ const getIconForType = (type: string) => {
   }
 };
 
-const getNavigationPath = (type: string, data: Record<string, unknown> | null): string | null => {
+const getNavigationPath = (type: string): string | null => {
   switch (type) {
     case "booking":
-      return data?.bookingId ? `/hub?tab=bookings` : "/hub?tab=bookings";
+      return "/hub?tab=bookings";
     case "message":
-      return data?.conversationId ? `/chat/${data.conversationId}` : "/messages";
+      return "/messages";
     case "review":
       return "/hub?tab=bookings";
     default:
@@ -37,14 +37,14 @@ const CustomerAlerts = () => {
   const navigate = useNavigate();
   const { notifications, loading, markAsRead, markAllAsRead } = useNotifications();
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
-  const handleNotificationClick = (notification: typeof notifications[0]) => {
-    if (!notification.read) {
+  const handleNotificationClick = (notification: AppNotification) => {
+    if (!notification.is_read) {
       markAsRead(notification.id);
     }
     
-    const path = getNavigationPath(notification.type, notification.data);
+    const path = getNavigationPath(notification.type);
     if (path) {
       navigate(path);
     }
@@ -88,7 +88,7 @@ const CustomerAlerts = () => {
           <div className="space-y-2">
             {notifications.map((notification) => {
               const { icon: Icon, color, bg } = getIconForType(notification.type);
-              const hasNavigation = getNavigationPath(notification.type, notification.data) !== null;
+              const hasNavigation = getNavigationPath(notification.type) !== null;
               
               return (
                 <div 
@@ -96,7 +96,7 @@ const CustomerAlerts = () => {
                   onClick={() => handleNotificationClick(notification)}
                   className={cn(
                     "bg-card rounded-xl p-4 border border-border relative cursor-pointer transition-colors hover:bg-muted/50",
-                    !notification.read && "bg-primary/5",
+                    !notification.is_read && "bg-primary/5",
                     hasNavigation && "active:scale-[0.98]"
                   )}
                 >
@@ -110,11 +110,11 @@ const CustomerAlerts = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-semibold text-foreground">{notification.title}</h3>
-                        {!notification.read && (
+                        {!notification.is_read && (
                           <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-2" />
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{notification.description}</p>
                       <span className="text-xs text-muted-foreground mt-1 block">
                         {new Date(notification.created_at).toLocaleDateString()}
                       </span>

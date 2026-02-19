@@ -10,14 +10,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Conversation {
   id: string;
-  professional_id: string;
-  last_message_at: string | null;
+  pro_id: string;
   professional?: {
     full_name: string;
     profession: string | null;
   };
   lastMessage?: string;
   unreadCount?: number;
+  created_at: string;
 }
 
 const CustomerMessages = () => {
@@ -34,14 +34,14 @@ const CustomerMessages = () => {
 
   const fetchConversations = async () => {
     try {
-      // First get customer profile id
-      const { data: customerProfile } = await supabase
-        .from("customer_profiles")
+      // Get profile id from profiles table
+      const { data: profile } = await supabase
+        .from("profiles")
         .select("id")
         .eq("user_id", user?.id)
         .single();
 
-      if (!customerProfile) {
+      if (!profile) {
         setLoading(false);
         return;
       }
@@ -51,23 +51,23 @@ const CustomerMessages = () => {
         .from("conversations")
         .select(`
           id,
-          professional_id,
-          last_message_at,
-          profiles!conversations_professional_id_fkey (
+          pro_id,
+          created_at,
+          professional:profiles!conversations_professional_id_fkey (
             full_name,
             profession
           )
         `)
-        .eq("customer_id", customerProfile.id)
-        .order("last_message_at", { ascending: false });
+        .eq("customer_id", profile.id)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
       const formattedConversations = (data || []).map((conv: any) => ({
         id: conv.id,
-        professional_id: conv.professional_id,
-        last_message_at: conv.last_message_at,
-        professional: conv.profiles,
+        pro_id: conv.pro_id,
+        created_at: conv.created_at,
+        professional: conv.professional,
         lastMessage: "Start chatting...",
         unreadCount: 0,
       }));
@@ -120,9 +120,7 @@ const CustomerMessages = () => {
                       {conversation.professional?.full_name || "Professional"}
                     </h3>
                     <span className="text-xs text-muted-foreground flex-shrink-0">
-                      {conversation.last_message_at 
-                        ? new Date(conversation.last_message_at).toLocaleDateString()
-                        : ""}
+                      {new Date(conversation.created_at).toLocaleDateString()}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground truncate">
