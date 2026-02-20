@@ -59,7 +59,7 @@ const secondaryItems = [
   { 
     icon: Share2, 
     label: "Invite Friends", 
-    description: "Share Safesearch and earn rewards",
+    description: "Share Safesight and earn rewards",
     path: "/invite" 
   },
   { 
@@ -158,7 +158,7 @@ const CustomerSettings = () => {
 
         {/* Version Info */}
         <div className="text-center text-sm text-muted-foreground mb-4">
-          <p>Safesearch Version 1.0.0</p>
+          <p>Safesight Version 1.0.0</p>
           <p className="text-xs">
             <button className="hover:underline">Terms of Service</button>
             {" • "}

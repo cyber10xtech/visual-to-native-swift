@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Eye, EyeOff, Search, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 const CustomerRegister = () => {
   const navigate = useNavigate();
@@ -54,7 +55,6 @@ const CustomerRegister = () => {
       toast.success("Account created! Please check your email to verify your account.");
       navigate("/sign-in");
     } catch (error: any) {
-      // Map to generic message to prevent user enumeration
       if (error.message?.includes("already registered")) {
         toast.error("Unable to create account. Please try a different email or sign in.");
       } else {
@@ -71,11 +71,9 @@ const CustomerRegister = () => {
         <div className="p-8">
           {/* Header */}
           <div className="flex flex-col items-center mb-6">
-            <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mb-4">
-              <Search className="w-10 h-10 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="Safesight" className="w-20 h-20 rounded-2xl mb-4 object-contain" />
             <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
-            <p className="text-muted-foreground">Join Safesearch today</p>
+            <p className="text-muted-foreground">Join Safesight today</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">

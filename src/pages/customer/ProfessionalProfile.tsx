@@ -170,7 +170,7 @@ const ProfessionalProfile = () => {
                       <span className="text-sm font-medium">Daily Rate</span>
                     </div>
                     <div className="text-2xl font-bold text-foreground">
-                      $ {dailyRate}
+                      ₦{dailyRate.toLocaleString()}
                       <span className="text-sm font-normal text-muted-foreground">/day</span>
                     </div>
                   </div>
@@ -182,7 +182,7 @@ const ProfessionalProfile = () => {
                       <span className="text-sm font-medium">Contract Rate</span>
                     </div>
                     <div className="text-2xl font-bold text-foreground">
-                      $ {contractRate}
+                      ₦{contractRate.toLocaleString()}
                       <span className="text-sm font-normal text-muted-foreground">/contract</span>
                     </div>
                   </div>

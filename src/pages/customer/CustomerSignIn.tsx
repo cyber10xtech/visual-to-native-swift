@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import logo from "@/assets/logo.png";
 
 const CustomerSignIn = () => {
   const navigate = useNavigate();
@@ -27,7 +28,6 @@ const CustomerSignIn = () => {
     setLoading(false);
 
     if (error) {
-      // Map auth errors to generic messages to prevent information leakage
       if (error.message.includes("Email not confirmed")) {
         toast.error("Please verify your email before signing in. Check your inbox for the verification link.");
       } else {
@@ -45,10 +45,8 @@ const CustomerSignIn = () => {
       <div className="w-full max-w-md bg-card rounded-3xl p-8 shadow-xl">
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mb-4">
-            <Search className="w-10 h-10 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">Safesearch</h1>
+          <img src={logo} alt="Safesight" className="w-20 h-20 rounded-2xl mb-4 object-contain" />
+          <h1 className="text-2xl font-bold text-foreground">Safesight</h1>
           <p className="text-muted-foreground mt-1">Find trusted professionals near you</p>
         </div>
 

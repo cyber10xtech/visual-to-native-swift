@@ -85,9 +85,9 @@ const ProfessionalCard = ({
                   )} />
                 </button>
               )}
-              <div className="text-primary font-semibold">$ {dailyRate}</div>
+              <div className="text-primary font-semibold">₦{dailyRate.toLocaleString()}</div>
               {weeklyRate && variant === "detailed" && (
-                <div className="text-xs text-muted-foreground">${weeklyRate}/week</div>
+                <div className="text-xs text-muted-foreground">₦{weeklyRate.toLocaleString()}/contract</div>
               )}
               {isEmergency && (
                 <Badge variant="outline" className="text-success border-success text-xs">
