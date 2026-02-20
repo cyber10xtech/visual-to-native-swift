@@ -20,8 +20,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "robots.txt"],
       manifest: {
-        name: "Safesearch - Find Professionals",
-        short_name: "Safesearch",
+        name: "Safesight - Find Professionals",
+          short_name: "Safesight",
         description: "Find trusted professionals near you for all your home service needs",
         theme_color: "#3b82f6",
         background_color: "#ffffff",

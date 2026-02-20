@@ -1,12 +1,14 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.e0223ea66a9e463595adee74eddc58bb',
-  appName: 'businesshandyman',
+  appId: 'app.safesight.customer',
+  appName: 'Safesight',
   webDir: 'dist',
-  server: {
-    url: 'https://e0223ea6-6a9e-4635-95ad-ee74eddc58bb.lovableproject.com?forceHideBadge=true',
-    cleartext: true
+  android: {
+    buildOptions: {
+      keystorePath: undefined,
+      keystoreAlias: undefined,
+    }
   }
 };
 
