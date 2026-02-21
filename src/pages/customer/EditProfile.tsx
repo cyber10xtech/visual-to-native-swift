@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Camera, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,12 +6,18 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
 import { useCustomerProfile } from "@/hooks/useCustomerProfile";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const EditProfile = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { profile, loading: profileLoading, updateProfile } = useCustomerProfile();
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -30,6 +36,7 @@ const EditProfile = () => {
         city: profile.city || "",
         zipCode: profile.zip_code || "",
       });
+      setAvatarUrl(profile.avatar_url || "");
     }
   }, [profile]);
 
@@ -37,14 +44,42 @@ const EditProfile = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${user.id}/avatar.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      setAvatarUrl(publicUrl);
+      toast.success("Photo uploaded!");
+    } catch (err: any) {
+      toast.error("Failed to upload photo: " + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     const { error } = await updateProfile({
       full_name: formData.fullName,
-      email: formData.email,
       address: formData.address,
       city: formData.city,
       zip_code: formData.zipCode,
+      avatar_url: avatarUrl || null,
     });
     setSaving(false);
 
@@ -86,16 +121,34 @@ const EditProfile = () => {
         <div className="flex flex-col items-center mb-8">
           <div className="relative">
             <Avatar className="w-24 h-24 bg-primary">
-              <AvatarImage src={profile?.avatar_url || ""} alt="Profile" />
+              <AvatarImage src={avatarUrl} alt="Profile" />
               <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-semibold">
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <button className="absolute bottom-0 right-0 w-8 h-8 bg-muted rounded-full flex items-center justify-center border-2 border-background">
-              <Camera className="w-4 h-4 text-muted-foreground" />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="absolute bottom-0 right-0 w-8 h-8 bg-muted rounded-full flex items-center justify-center border-2 border-background"
+            >
+              {uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              ) : (
+                <Camera className="w-4 h-4 text-muted-foreground" />
+              )}
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
           </div>
-          <button className="text-sm text-muted-foreground mt-2 hover:text-foreground">
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="text-sm text-muted-foreground mt-2 hover:text-foreground"
+          >
             Change profile photo
           </button>
         </div>

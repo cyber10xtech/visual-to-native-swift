@@ -26,40 +26,40 @@ export const useCustomerProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
+  const fetchProfile = async () => {
     if (!user) {
       setProfile(null);
       setLoading(false);
       return;
     }
 
-    const fetchProfile = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle();
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (data) {
-          setProfile(data as CustomerProfile);
-        } else {
-          setProfile(null);
-        }
-      } catch (err) {
-        setError(err as Error);
-      } finally {
-        setLoading(false);
+      if (data) {
+        setProfile(data as CustomerProfile);
+      } else {
+        setProfile(null);
       }
-    };
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchProfile();
   }, [user]);
 
-  const updateProfile = async (updates: Partial<CustomerProfile>) => {
+  const updateProfile = async (updates: Partial<Omit<CustomerProfile, "id" | "user_id" | "created_at" | "updated_at" | "email">>) => {
     if (!user || !profile) return { error: new Error("Not authenticated") };
 
     try {
@@ -70,13 +70,8 @@ export const useCustomerProfile = () => {
 
       if (error) throw error;
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-
-      setProfile(data as CustomerProfile);
+      // Refetch to get fresh data
+      await fetchProfile();
       return { error: null };
     } catch (err) {
       return { error: err as Error };

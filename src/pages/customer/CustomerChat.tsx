@@ -1,59 +1,37 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Phone, Video, MoreVertical, Paperclip, Send } from "lucide-react";
+import { ArrowLeft, Paperclip, Send, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Message {
   id: string;
-  text: string;
-  sender: "user" | "other";
-  time: string;
+  content: string;
+  sender_id: string;
+  created_at: string;
+  is_read: boolean;
 }
 
-// Mock data for conversations
-const mockConversationData: Record<string, { name: string; initial: string; color: string; messages: Message[] }> = {
-  "1": {
-    name: "Mike Johnson",
-    initial: "M",
-    color: "bg-success",
-    messages: [
-      { id: "1", text: "Hi! I'm interested in your plumbing services.", sender: "user", time: "10:00 AM" },
-      { id: "2", text: "Hello! Thanks for reaching out. What do you need help with?", sender: "other", time: "10:05 AM" },
-      { id: "3", text: "My kitchen sink is leaking. Can you fix it tomorrow?", sender: "user", time: "10:10 AM" },
-      { id: "4", text: "I can come by at 2 PM tomorrow", sender: "other", time: "10:30 AM" },
-    ],
-  },
-  "2": {
-    name: "Sarah Williams",
-    initial: "S",
-    color: "bg-primary",
-    messages: [
-      { id: "1", text: "Thank you for completing the job!", sender: "user", time: "Yesterday" },
-      { id: "2", text: "The job is complete. Please leave a review!", sender: "other", time: "Yesterday" },
-    ],
-  },
-  "3": {
-    name: "David Chen",
-    initial: "D",
-    color: "bg-warning",
-    messages: [
-      { id: "1", text: "I need some renovation work done", sender: "user", time: "Jan 14" },
-      { id: "2", text: "What materials would you like me to use?", sender: "other", time: "Jan 14" },
-    ],
-  },
-};
+interface Professional {
+  full_name: string;
+  profession: string | null;
+  avatar_url: string | null;
+}
 
 const CustomerChat = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id: conversationId } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [professional, setProfessional] = useState<Professional | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const conversation = id ? mockConversationData[id] : null;
-  const [messages, setMessages] = useState<Message[]>(conversation?.messages || []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,28 +41,133 @@ const CustomerChat = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim()) return;
+  // Fetch profile ID, conversation details, and messages
+  useEffect(() => {
+    if (!user || !conversationId) return;
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: message.trim(),
-      sender: "user",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    const init = async () => {
+      try {
+        // Get own profile id
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (profile) setProfileId(profile.id);
+
+        // Get conversation with professional info
+        const { data: conv } = await supabase
+          .from("conversations")
+          .select(`
+            pro_id,
+            professional:profiles!conversations_professional_id_fkey (
+              full_name,
+              profession,
+              avatar_url
+            )
+          `)
+          .eq("id", conversationId)
+          .single();
+
+        if (conv?.professional) {
+          setProfessional(conv.professional as unknown as Professional);
+        }
+
+        // Fetch messages
+        const { data: msgs } = await supabase
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversationId)
+          .order("created_at", { ascending: true });
+
+        setMessages(msgs || []);
+
+        // Mark unread messages as read
+        if (profile) {
+          await supabase
+            .from("messages")
+            .update({ is_read: true })
+            .eq("conversation_id", conversationId)
+            .neq("sender_id", profile.id)
+            .eq("is_read", false);
+        }
+      } catch (err) {
+        console.error("Error loading chat:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    init();
+  }, [user, conversationId]);
+
+  // Subscribe to realtime messages
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const channel = supabase
+      .channel(`chat-${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as Message;
+          setMessages((prev) => {
+            if (prev.find((m) => m.id === newMsg.id)) return prev;
+            return [...prev, newMsg];
+          });
+
+          // Auto-mark as read if from other person
+          if (profileId && newMsg.sender_id !== profileId) {
+            supabase
+              .from("messages")
+              .update({ is_read: true })
+              .eq("id", newMsg.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [conversationId, profileId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!message.trim() || !profileId || !conversationId) return;
+
+    const content = message.trim();
     setMessage("");
+
+    const { error } = await supabase.from("messages").insert({
+      conversation_id: conversationId,
+      sender_id: profileId,
+      content,
+    });
+
+    if (error) {
+      console.error("Failed to send message:", error);
+      setMessage(content);
+    }
   };
 
-  if (!conversation) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Conversation not found</p>
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
   }
+
+  const proName = professional?.full_name || "Professional";
+  const proInitial = proName.charAt(0).toUpperCase();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -95,53 +178,51 @@ const CustomerChat = () => {
             <button onClick={() => navigate(-1)}>
               <ArrowLeft className="w-5 h-5 text-muted-foreground" />
             </button>
-            <Avatar className={cn("w-10 h-10", conversation.color)}>
-              <AvatarFallback className={cn("text-white font-semibold", conversation.color)}>
-                {conversation.initial}
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={professional?.avatar_url || undefined} alt={proName} />
+              <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
+                {proInitial}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="font-semibold text-foreground">{conversation.name}</h1>
-              <span className="text-xs text-success">Online</span>
+              <h1 className="font-semibold text-foreground">{proName}</h1>
+              <span className="text-xs text-muted-foreground">{professional?.profession || "Professional"}</span>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="p-2 text-muted-foreground hover:text-foreground">
-              <Phone className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-muted-foreground hover:text-foreground">
-              <Video className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-muted-foreground hover:text-foreground">
-              <MoreVertical className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={cn(
-              "max-w-[80%] rounded-2xl px-4 py-2",
-              msg.sender === "user"
-                ? "ml-auto bg-primary text-primary-foreground rounded-br-sm"
-                : "mr-auto bg-muted text-foreground rounded-bl-sm"
-            )}
-          >
-            <p className="text-sm">{msg.text}</p>
-            <span
+        {messages.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No messages yet. Start the conversation!
+          </div>
+        )}
+        {messages.map((msg) => {
+          const isMe = msg.sender_id === profileId;
+          return (
+            <div
+              key={msg.id}
               className={cn(
-                "text-xs block mt-1",
-                msg.sender === "user" ? "text-primary-foreground/70" : "text-muted-foreground"
+                "max-w-[80%] rounded-2xl px-4 py-2",
+                isMe
+                  ? "ml-auto bg-primary text-primary-foreground rounded-br-sm"
+                  : "mr-auto bg-muted text-foreground rounded-bl-sm"
               )}
             >
-              {msg.time}
-            </span>
-          </div>
-        ))}
+              <p className="text-sm">{msg.content}</p>
+              <span
+                className={cn(
+                  "text-xs block mt-1",
+                  isMe ? "text-primary-foreground/70" : "text-muted-foreground"
+                )}
+              >
+                {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
@@ -157,7 +238,7 @@ const CustomerChat = () => {
             placeholder="Type a message..."
             className="flex-1 h-10 bg-muted/50 border border-border rounded-xl"
           />
-          <Button type="submit" size="icon" className="rounded-full">
+          <Button type="submit" size="icon" className="rounded-full" disabled={!message.trim()}>
             <Send className="w-4 h-4" />
           </Button>
         </div>
