@@ -9,38 +9,32 @@ import CategoryCard from "@/components/customer/CategoryCard";
 import { useNavigate } from "react-router-dom";
 import { useProfessionals } from "@/hooks/useProfessionals";
 
-const categories = [
-  { name: "Electrician", icon: "electrician" },
+const professionalCategories = [
+  { name: "Architect", icon: "architect" },
+  { name: "Project Manager", icon: "projectmanager" },
+  { name: "Builder", icon: "builder" },
+  { name: "Interior Designer", icon: "interiordesigner" },
+  { name: "Electrical Engineer", icon: "electricalengineer" },
+  { name: "Structural Engineer", icon: "structuralengineer" },
+  { name: "Mechanical Engineer", icon: "mechanicalengineer" },
+  { name: "Quantity Surveyor", icon: "quantitysurveyor" },
+];
+
+const handymanCategories = [
+  { name: "Wall Painter", icon: "painter" },
   { name: "Plumber", icon: "plumber" },
   { name: "Carpenter", icon: "carpenter" },
-  { name: "Painter", icon: "painter" },
-  { name: "Mason / Bricklayer", icon: "mason" },
+  { name: "Electrician", icon: "electrician" },
+  { name: "AC Installer", icon: "hvac" },
   { name: "Tiler", icon: "tiler" },
   { name: "Welder", icon: "welder" },
-  { name: "AC / HVAC Technician", icon: "hvac" },
-  { name: "Generator Technician", icon: "generator" },
-  { name: "Auto Mechanic", icon: "mechanic" },
-  { name: "Roofer", icon: "roofer" },
-  { name: "Landscaper / Gardener", icon: "landscaper" },
-  { name: "Pest Control Specialist", icon: "pest" },
-  { name: "Locksmith", icon: "locksmith" },
-  { name: "Cleaner", icon: "cleaner" },
-  { name: "Furniture Maker", icon: "furniture" },
-  { name: "Aluminium Fabricator", icon: "aluminium" },
-  { name: "POP / Ceiling Installer", icon: "ceiling" },
-  { name: "Solar Panel Installer", icon: "solar" },
-  { name: "CCTV / Security Installer", icon: "security" },
-  { name: "Appliance Repair Technician", icon: "appliance" },
-  { name: "Phone / Laptop Repair", icon: "phone" },
-  { name: "Tailor / Fashion Designer", icon: "tailor" },
-  { name: "Barber / Hairstylist", icon: "barber" },
-  { name: "Makeup Artist", icon: "makeup" },
-  { name: "Photographer / Videographer", icon: "photographer" },
-  { name: "Event Planner / Decorator", icon: "event" },
-  { name: "Caterer / Cook", icon: "caterer" },
-  { name: "Driver", icon: "driver" },
-  { name: "Dispatch Rider", icon: "dispatch" },
-  { name: "Other", icon: "other" },
+  { name: "Bricklayer", icon: "mason" },
+  { name: "Roof Installer", icon: "roofer" },
+  { name: "Furniture Repairs", icon: "furniture" },
+  { name: "Industrial Cleaner", icon: "cleaner" },
+  { name: "Landscape Expert", icon: "landscaper" },
+  { name: "Fumigator", icon: "pest" },
+  { name: "General Labourer", icon: "other" },
 ];
 
 const CustomerHome = () => {
@@ -53,17 +47,32 @@ const CustomerHome = () => {
   
   const { professionals, loading, fetchProfessionals } = useProfessionals();
 
-  const displayedCategories = showAllCategories ? categories : categories.slice(0, 6);
+  const currentCategories = activeTab === "professionals" 
+    ? professionalCategories 
+    : activeTab === "handymen" 
+    ? handymanCategories 
+    : [...professionalCategories, ...handymanCategories];
+
+  const displayedCategories = showAllCategories ? currentCategories : currentCategories.slice(0, 6);
 
   const handleSearch = (value: string) => {
     setSearchQuery(value);
-    fetchProfessionals({ search: value });
+    const accountType = activeTab === "professionals" ? "professional" : activeTab === "handymen" ? "handyman" : undefined;
+    fetchProfessionals({ search: value, accountType });
   };
 
   const handleCategoryClick = (categoryName: string) => {
     const newCategory = selectedCategory === categoryName ? null : categoryName;
     setSelectedCategory(newCategory);
-    fetchProfessionals({ profession: newCategory || undefined, search: searchQuery });
+    const accountType = activeTab === "professionals" ? "professional" : activeTab === "handymen" ? "handyman" : undefined;
+    fetchProfessionals({ profession: newCategory || undefined, search: searchQuery, accountType });
+  };
+
+  const handleTabChange = (tab: "all" | "professionals" | "handymen") => {
+    setActiveTab(tab);
+    setSelectedCategory(null);
+    const accountType = tab === "professionals" ? "professional" : tab === "handymen" ? "handyman" : undefined;
+    fetchProfessionals({ search: searchQuery, accountType });
   };
 
   return (
@@ -90,11 +99,7 @@ const CustomerHome = () => {
               key={tab}
               variant={activeTab === tab ? "default" : "outline"}
               size="sm"
-              onClick={() => {
-                setActiveTab(tab);
-                const accountType = tab === "professionals" ? "professional" : tab === "handymen" ? "handyman" : undefined;
-                fetchProfessionals({ search: searchQuery, accountType });
-              }}
+              onClick={() => handleTabChange(tab)}
               className="capitalize rounded-full"
             >
               {tab === "all" ? "All" : tab}
@@ -137,7 +142,9 @@ const CustomerHome = () => {
 
         {/* Categories */}
         <div className="mb-6">
-          <h2 className="font-semibold text-foreground mb-3">All Categories</h2>
+          <h2 className="font-semibold text-foreground mb-3">
+            {activeTab === "professionals" ? "Professional Categories" : activeTab === "handymen" ? "Handyman Categories" : "All Categories"}
+          </h2>
           <div className="grid grid-cols-3 gap-3">
             {displayedCategories.map((category) => (
               <CategoryCard
@@ -149,15 +156,17 @@ const CustomerHome = () => {
               />
             ))}
           </div>
-          <button
-            onClick={() => setShowAllCategories(!showAllCategories)}
-            className="w-full text-center text-primary text-sm font-medium mt-3 hover:underline"
-          >
-            {showAllCategories ? "Show Less" : `Show All Categories (${categories.length})`}
-          </button>
+          {currentCategories.length > 6 && (
+            <button
+              onClick={() => setShowAllCategories(!showAllCategories)}
+              className="w-full text-center text-primary text-sm font-medium mt-3 hover:underline"
+            >
+              {showAllCategories ? "Show Less" : `Show All Categories (${currentCategories.length})`}
+            </button>
+          )}
         </div>
 
-        {/* Top Rated Professionals */}
+        {/* Professionals List */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-foreground">New Professionals</h2>
