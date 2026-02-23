@@ -14,64 +14,26 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 import { useAuth } from "@/hooks/useAuth";
+import { useCustomerProfile } from "@/hooks/useCustomerProfile";
 import { useNavigate } from "react-router-dom";
 
 const settingsItems = [
-  { 
-    icon: User, 
-    label: "Edit Profile", 
-    description: "Update your personal information",
-    path: "/settings/edit-profile" 
-  },
-  { 
-    icon: Heart, 
-    label: "Saved Professionals", 
-    description: "View your favorite handymen",
-    path: "/hub?tab=favorites" 
-  },
-  { 
-    icon: CreditCard, 
-    label: "Payment Methods", 
-    description: "Manage your payment options",
-    path: "/settings/payments" 
-  },
-  { 
-    icon: Bell, 
-    label: "Notifications", 
-    description: "Manage notification preferences",
-    path: "/settings/notifications" 
-  },
-  { 
-    icon: Shield, 
-    label: "Privacy & Security", 
-    description: "Control your privacy settings",
-    path: "/settings/privacy" 
-  },
-  { 
-    icon: HelpCircle, 
-    label: "Help & Support", 
-    description: "Get help and contact support",
-    path: "/settings/help" 
-  },
+  { icon: User, label: "Edit Profile", description: "Update your personal information", path: "/settings/edit-profile" },
+  { icon: Heart, label: "Saved Professionals", description: "View your favorite professionals", path: "/hub?tab=favorites" },
+  { icon: CreditCard, label: "Payment Methods", description: "Manage your payment options", path: "/settings/payments" },
+  { icon: Bell, label: "Notifications", description: "Manage notification preferences", path: "/settings/notifications" },
+  { icon: Shield, label: "Privacy & Security", description: "Control your privacy settings", path: "/settings/privacy" },
+  { icon: HelpCircle, label: "Help & Support", description: "Get help and contact support", path: "/settings/help" },
 ];
 
 const secondaryItems = [
-  { 
-    icon: Share2, 
-    label: "Invite Friends", 
-    description: "Share Safesight and earn rewards",
-    path: "/invite" 
-  },
-  { 
-    icon: FileText, 
-    label: "Terms & Privacy", 
-    description: "Read our terms and privacy policy",
-    path: "/terms" 
-  },
+  { icon: Share2, label: "Invite Friends", description: "Share Safesight and earn rewards", path: "/invite" },
+  { icon: FileText, label: "Terms & Privacy", description: "Read our terms and privacy policy", path: "/terms" },
 ];
 
 const CustomerSettings = () => {
   const { user, signOut } = useAuth();
+  const { profile } = useCustomerProfile();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -79,7 +41,8 @@ const CustomerSettings = () => {
     navigate("/sign-in");
   };
 
-  const userName = user?.email?.split("@")[0] || "User";
+  const displayName = profile?.full_name || user?.email?.split("@")[0] || "User";
+  const initials = displayName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -90,16 +53,19 @@ const CustomerSettings = () => {
         <div className="bg-primary rounded-xl p-4 mb-6">
           <div className="flex items-center gap-4">
             <Avatar className="w-14 h-14 border-2 border-primary-foreground/20">
-              <AvatarImage src="" alt="User" />
+              <AvatarImage src={profile?.avatar_url || ""} alt={displayName} />
               <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground text-lg font-semibold">
-                {userName.slice(0, 2).toUpperCase()}
+                {initials}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <h2 className="font-semibold text-primary-foreground capitalize">
-                {userName}
+              <h2 className="font-semibold text-primary-foreground">
+                {displayName}
               </h2>
               <p className="text-sm text-primary-foreground/80">{user?.email}</p>
+              {profile?.location && (
+                <p className="text-xs text-primary-foreground/60 mt-0.5">{profile.location}</p>
+              )}
             </div>
           </div>
           <Button
@@ -156,14 +122,9 @@ const CustomerSettings = () => {
           ))}
         </div>
 
-        {/* Version Info */}
+        {/* Version */}
         <div className="text-center text-sm text-muted-foreground mb-4">
-          <p>Safesight Version 1.0.0</p>
-          <p className="text-xs">
-            <button className="hover:underline">Terms of Service</button>
-            {" • "}
-            <button className="hover:underline">Privacy Policy</button>
-          </p>
+          <p>Safesight v1.0.0</p>
         </div>
 
         {/* Sign Out */}

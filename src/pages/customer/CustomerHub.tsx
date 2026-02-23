@@ -3,12 +3,23 @@ import { Calendar, Heart, AlertCircle, Sparkles, Clock, AlertTriangle, Loader2 }
 import { Button } from "@/components/ui/button";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 import ProfessionalCard from "@/components/customer/ProfessionalCard";
+import CustomerBookingCard from "@/components/customer/CustomerBookingCard";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useProfessionals } from "@/hooks/useProfessionals";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useBookings } from "@/hooks/useBookings";
 
 type HubTab = "bookings" | "favorites" | "emergency";
-type DiscoverTab = "discover" | "recent";
+
+const mapBookingStatus = (status: string): "upcoming" | "in_progress" | "completed" | "pending" => {
+  switch (status.toUpperCase()) {
+    case "CONFIRMED": return "upcoming";
+    case "IN_PROGRESS": return "in_progress";
+    case "COMPLETED": return "completed";
+    case "CANCELLED": return "completed";
+    default: return "pending";
+  }
+};
 
 const CustomerHub = () => {
   const navigate = useNavigate();
@@ -16,27 +27,24 @@ const CustomerHub = () => {
   const initialTab = (searchParams.get("tab") as HubTab) || "bookings";
   
   const [activeHubTab, setActiveHubTab] = useState<HubTab>(initialTab);
-  const [discoverTab, setDiscoverTab] = useState<DiscoverTab>("discover");
 
   const { professionals, loading: professionalsLoading } = useProfessionals();
-  const { favorites, loading: favoritesLoading, addFavorite, removeFavorite, isFavorite } = useFavorites();
+  const { favorites, loading: favoritesLoading, removeFavorite, isFavorite } = useFavorites();
+  const { bookings, loading: bookingsLoading } = useBookings();
 
   const handleToggleFavorite = async (professionalId: string) => {
     if (isFavorite(professionalId)) {
       await removeFavorite(professionalId);
-    } else {
-      await addFavorite(professionalId);
     }
   };
 
-  // Filter emergency professionals (those with certain professions)
-  const emergencyProfessions = ["Plumber", "Electrician", "AC / HVAC Technician", "Locksmith", "Generator Technician"];
+  const emergencyProfessions = ["Plumber", "Electrician", "AC Installer", "Welder"];
   const emergencyProfessionals = professionals.filter(p => 
     emergencyProfessions.some(ep => p.profession?.toLowerCase() === ep.toLowerCase())
   );
 
   const hubTabs = [
-    { id: "bookings" as const, label: "My Bookings", icon: Calendar },
+    { id: "bookings" as const, label: "Bookings", icon: Calendar },
     { id: "favorites" as const, label: "Favorites", icon: Heart },
     { id: "emergency" as const, label: "Emergency", icon: AlertCircle },
   ];
@@ -57,92 +65,62 @@ const CustomerHub = () => {
               className="flex-1 gap-1"
             >
               <tab.icon className="w-4 h-4" />
-              {tab.label.split(" ")[1] || tab.label}
+              {tab.label}
             </Button>
           ))}
         </div>
 
-        {/* Content based on active tab */}
+        {/* Bookings Tab */}
         {activeHubTab === "bookings" && (
           <>
-            {/* Discover Toggle */}
-            <div className="flex gap-2 mb-4">
-              <Button
-                variant={discoverTab === "discover" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setDiscoverTab("discover")}
-                className="gap-1"
-              >
-                <Sparkles className="w-4 h-4" />
-                Discover Handymen
-              </Button>
-              <Button
-                variant={discoverTab === "recent" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setDiscoverTab("recent")}
-                className="gap-1"
-              >
-                <Clock className="w-4 h-4" />
-                Recently Connected
-              </Button>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-foreground">My Bookings</h2>
+              <span className="text-sm text-muted-foreground">{bookings.length} total</span>
             </div>
-
-            {professionalsLoading ? (
+            {bookingsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
-            ) : discoverTab === "discover" ? (
-              <>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-foreground">Explore New Professionals</h2>
-                  <span className="text-sm text-muted-foreground">{professionals.length} available</span>
-                </div>
-                {professionals.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No professionals found</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {professionals.map((professional) => (
-                      <ProfessionalCard
-                        key={professional.id}
-                        id={professional.id}
-                        name={professional.full_name}
-                        profession={professional.profession || "Professional"}
-                        location={professional.location || "Location not set"}
-                        lastActive="Recently"
-                        rating={4.8}
-                        reviewCount={0}
-                        distance=""
-                        dailyRate={professional.daily_rate ? parseInt(professional.daily_rate) : 0}
-                        weeklyRate={professional.contract_rate ? parseInt(professional.contract_rate) : 0}
-                        bio={professional.bio || ""}
-                        variant="detailed"
-                        onView={() => navigate(`/professional/${professional.id}`)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
+            ) : bookings.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                <p>No bookings yet</p>
+                <p className="text-sm mt-1">Find a professional and make your first booking!</p>
+                <Button onClick={() => navigate("/home")} className="mt-4" size="sm">
+                  Find Professionals
+                </Button>
+              </div>
             ) : (
-              <>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-foreground">Your Connections</h2>
-                  <span className="text-sm text-muted-foreground">0 connections</span>
-                </div>
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No connections yet. Book a professional to connect!</p>
-                </div>
-              </>
+              <div className="space-y-3">
+                {bookings.map((booking, index) => {
+                  const bookingDate = booking.booking_date ? new Date(booking.booking_date) : null;
+                  return (
+                    <CustomerBookingCard
+                      key={booking.id}
+                      id={booking.id}
+                      number={bookings.length - index}
+                      title={booking.service_type}
+                      professionalName={booking.professional?.full_name || "Professional"}
+                      profession={booking.professional?.profession || ""}
+                      date={bookingDate?.toLocaleDateString() || "TBD"}
+                      time={bookingDate?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "TBD"}
+                      location={booking.professional?.location || ""}
+                      price={booking.amount}
+                      status={mapBookingStatus(booking.status)}
+                    />
+                  );
+                })}
+              </div>
             )}
           </>
         )}
 
+        {/* Favorites Tab */}
         {activeHubTab === "favorites" && (
           <>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-foreground">Favorites</h2>
-              <span className="text-sm text-muted-foreground">{favorites.length} saved professionals</span>
+              <span className="text-sm text-muted-foreground">{favorites.length} saved</span>
             </div>
             {favoritesLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -150,7 +128,9 @@ const CustomerHub = () => {
               </div>
             ) : favorites.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <p>No favorites yet. Heart a professional to save them!</p>
+                <Heart className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                <p>No favorites yet</p>
+                <p className="text-sm mt-1">Heart a professional to save them here!</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -177,9 +157,9 @@ const CustomerHub = () => {
           </>
         )}
 
+        {/* Emergency Tab */}
         {activeHubTab === "emergency" && (
           <>
-            {/* Emergency Header */}
             <div className="bg-destructive rounded-xl p-4 mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <AlertCircle className="w-5 h-5 text-destructive-foreground" />
@@ -190,14 +170,13 @@ const CustomerHub = () => {
               </p>
             </div>
 
-            {/* Warning Banner */}
             <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 mb-4">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-destructive">For immediate assistance</p>
                   <p className="text-xs text-muted-foreground">
-                    These professionals offer emergency services and can respond quickly to urgent situations.
+                    These professionals offer emergency services and can respond quickly.
                   </p>
                 </div>
               </div>
