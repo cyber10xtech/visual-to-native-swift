@@ -97,7 +97,7 @@ const CustomerBookingCard = ({
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="text-lg font-semibold text-foreground">$ {price}</span>
+        <span className="text-lg font-semibold text-foreground">₦{price.toLocaleString()}</span>
         
         <div className="flex gap-2">
           {status === "upcoming" && (
