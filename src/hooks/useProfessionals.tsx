@@ -32,6 +32,7 @@ export const useProfessionals = () => {
       let query = supabase
         .from("profiles")
         .select(PUBLIC_PROFILE_FIELDS)
+        .in("account_type", ["professional", "handyman"])
         .order("created_at", { ascending: false });
 
       if (filters?.accountType) {
