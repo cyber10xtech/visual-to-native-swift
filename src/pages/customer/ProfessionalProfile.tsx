@@ -6,7 +6,8 @@ import {
   Clock, 
   Calendar,
   CheckCircle2,
-  Loader2
+  Loader2,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,6 +17,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 import { cn } from "@/lib/utils";
 import { useProfessionals } from "@/hooks/useProfessionals";
+import { useCustomerProfile } from "@/hooks/useCustomerProfile";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { Profile } from "@/hooks/useProfile";
 
 const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -24,8 +28,10 @@ const ProfessionalProfile = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { getProfessionalById } = useProfessionals();
+  const { profile: customerProfile } = useCustomerProfile();
   const [professional, setProfessional] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [startingChat, setStartingChat] = useState(false);
 
   useEffect(() => {
     const fetchProfessional = async () => {
@@ -120,7 +126,7 @@ const ProfessionalProfile = () => {
               </div>
             </div>
 
-            {/* Action Buttons - Contact info available after booking */}
+            {/* Action Buttons */}
             <div className="flex gap-3 mt-4">
               <Button 
                 className="flex-1 gap-2"
@@ -128,6 +134,43 @@ const ProfessionalProfile = () => {
               >
                 <Calendar className="w-4 h-4" />
                 Book Now
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2"
+                disabled={startingChat}
+                onClick={async () => {
+                  if (!customerProfile?.id || !id) return;
+                  setStartingChat(true);
+                  try {
+                    // Check for existing conversation
+                    const { data: existing } = await supabase
+                      .from("conversations")
+                      .select("id")
+                      .eq("customer_id", customerProfile.id)
+                      .eq("pro_id", id)
+                      .maybeSingle();
+
+                    if (existing) {
+                      navigate(`/chat/${existing.id}`);
+                    } else {
+                      const { data: newConv, error } = await supabase
+                        .from("conversations")
+                        .insert({ customer_id: customerProfile.id, pro_id: id })
+                        .select("id")
+                        .single();
+                      if (error) throw error;
+                      navigate(`/chat/${newConv.id}`);
+                    }
+                  } catch (err) {
+                    toast.error("Could not start conversation");
+                  } finally {
+                    setStartingChat(false);
+                  }
+                }}
+              >
+                {startingChat ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                Message
               </Button>
             </div>
           </CardContent>

@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2, Camera } from "lucide-react";
+import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
 
 const CustomerRegister = () => {
@@ -190,6 +191,17 @@ const CustomerRegister = () => {
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
+              </div>
+              <div className="space-y-1 mt-2">
+                <p className={cn("text-xs flex items-center gap-1", formData.password.length >= 6 ? "text-primary" : "text-muted-foreground")}>
+                  {formData.password.length >= 6 ? "✓" : "○"} At least 6 characters
+                </p>
+                <p className={cn("text-xs flex items-center gap-1", /[a-zA-Z]/.test(formData.password) ? "text-primary" : "text-muted-foreground")}>
+                  {/[a-zA-Z]/.test(formData.password) ? "✓" : "○"} Contains a letter
+                </p>
+                <p className={cn("text-xs flex items-center gap-1", /[0-9]/.test(formData.password) ? "text-primary" : "text-muted-foreground")}>
+                  {/[0-9]/.test(formData.password) ? "✓" : "○"} Contains a number
+                </p>
               </div>
             </div>
 

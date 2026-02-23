@@ -38,7 +38,7 @@ export const useBookings = () => {
         .from("bookings")
         .select(`
           *,
-          professional:profiles!bookings_pro_id_fkey(*)
+          professional:profiles!bookings_professional_id_fkey(*)
         `)
         .eq("customer_id", profile.id)
         .order("created_at", { ascending: false });

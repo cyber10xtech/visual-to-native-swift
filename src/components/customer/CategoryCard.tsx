@@ -4,17 +4,16 @@ import {
   Droplets, 
   Hammer, 
   Paintbrush, 
-  Box,
+  Layers,
   Grid3X3, 
   Flame, 
   Wind, 
-  Car, 
   Home, 
   TreePine, 
   Bug, 
   Sparkles, 
   Sofa, 
-  MoreHorizontal,
+  Wrench,
   Compass,
   ClipboardList,
   HardHat,
@@ -47,33 +46,32 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   plumber: Droplets,
   carpenter: Hammer,
   painter: Paintbrush,
-  mason: Box,
+  mason: Layers,
   tiler: Grid3X3,
   welder: Flame,
   hvac: Wind,
-  mechanic: Car,
   roofer: Home,
   landscaper: TreePine,
   pest: Bug,
   cleaner: Sparkles,
   furniture: Sofa,
-  other: MoreHorizontal,
+  other: Wrench,
 };
 
 const CategoryCard = ({ name, icon, onClick, isSelected }: CategoryCardProps) => {
-  const IconComponent = iconMap[icon.toLowerCase()] || MoreHorizontal;
+  const IconComponent = iconMap[icon.toLowerCase()] || Wrench;
 
   return (
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center justify-center p-4 rounded-xl border border-border bg-card transition-all",
-        "hover:border-primary hover:bg-primary/5",
-        isSelected && "border-primary bg-primary/10"
+        "flex flex-col items-center justify-center p-3 rounded-2xl border border-border bg-card transition-all shadow-sm",
+        "hover:border-primary hover:bg-primary/5 hover:shadow-md",
+        isSelected && "border-primary bg-primary/10 shadow-md"
       )}
     >
       <div className={cn(
-        "w-10 h-10 rounded-lg flex items-center justify-center mb-2",
+        "w-11 h-11 rounded-xl flex items-center justify-center mb-2",
         isSelected ? "bg-primary/20" : "bg-muted"
       )}>
         <IconComponent className={cn(
@@ -81,7 +79,7 @@ const CategoryCard = ({ name, icon, onClick, isSelected }: CategoryCardProps) =>
           isSelected ? "text-primary" : "text-muted-foreground"
         )} />
       </div>
-      <span className="text-xs font-medium text-center text-foreground">{name}</span>
+      <span className="text-xs font-medium text-center leading-tight text-foreground">{name}</span>
     </button>
   );
 };
