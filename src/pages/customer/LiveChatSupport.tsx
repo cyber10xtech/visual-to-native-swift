@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Paperclip, Send } from "lucide-react";
+import { ArrowLeft, Paperclip, Send, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -22,10 +23,11 @@ const quickReplies = [
 const LiveChatSupport = () => {
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Hi! Welcome to HandyConnect support. How can I help you today?",
+      text: "Hi! Welcome to Safesight support. How can I help you today?",
       sender: "support",
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     },
@@ -40,29 +42,54 @@ const LiveChatSupport = () => {
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = (text: string) => {
-    if (!text.trim()) return;
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || sending) return;
 
-    const newMessage: Message = {
+    const userMsg: Message = {
       id: Date.now().toString(),
       text: text.trim(),
       sender: "user",
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setMessage("");
+    setSending(true);
 
-    // Simulate support response
-    setTimeout(() => {
-      const response: Message = {
+    try {
+      const { data, error } = await supabase.functions.invoke("live-chat", {
+        body: {
+          messages: updatedMessages.map((m) => ({
+            sender: m.sender,
+            text: m.text,
+          })),
+        },
+      });
+
+      const replyText = error
+        ? "I'm having trouble connecting right now. Please try again in a moment."
+        : data?.reply || "I'm sorry, I couldn't process that. Please try again.";
+
+      const supportMsg: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Thank you for reaching out! A support agent will be with you shortly. In the meantime, can you provide more details about your issue?",
+        text: replyText,
         sender: "support",
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
-      setMessages((prev) => [...prev, response]);
-    }, 1500);
+
+      setMessages((prev) => [...prev, supportMsg]);
+    } catch {
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, something went wrong. Please try again.",
+        sender: "support",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -82,9 +109,9 @@ const LiveChatSupport = () => {
           <div>
             <h1 className="font-semibold text-foreground">Live Chat Support</h1>
             <div className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-success rounded-full" />
+              <span className="w-2 h-2 bg-primary rounded-full" />
               <span className="text-xs text-muted-foreground">
-                Online · Avg. response time: 2 min
+                Online · AI-powered support
               </span>
             </div>
           </div>
@@ -114,44 +141,50 @@ const LiveChatSupport = () => {
             </span>
           </div>
         ))}
+        {sending && (
+          <div className="max-w-[80%] mr-auto bg-muted text-foreground rounded-2xl rounded-bl-sm px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Typing...</span>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Quick Replies */}
-      <div className="px-4 py-2 border-t border-border">
-        <p className="text-xs text-muted-foreground mb-2">Quick replies:</p>
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {quickReplies.map((reply) => (
-            <button
-              key={reply}
-              onClick={() => sendMessage(reply)}
-              className="flex-shrink-0 px-3 py-1.5 bg-muted rounded-full text-sm text-foreground hover:bg-muted/80 transition-colors"
-            >
-              {reply}
-            </button>
-          ))}
+      {messages.length <= 1 && (
+        <div className="px-4 py-2 border-t border-border">
+          <p className="text-xs text-muted-foreground mb-2">Quick replies:</p>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {quickReplies.map((reply) => (
+              <button
+                key={reply}
+                onClick={() => sendMessage(reply)}
+                disabled={sending}
+                className="flex-shrink-0 px-3 py-1.5 bg-muted rounded-full text-sm text-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-4 border-t border-border bg-card">
         <div className="flex items-center gap-2">
-          <button type="button" className="text-muted-foreground hover:text-foreground">
-            <Paperclip className="w-5 h-5" />
-          </button>
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Type your message..."
             className="flex-1 h-10 bg-muted/50 border border-border rounded-xl"
+            disabled={sending}
           />
-          <Button type="submit" size="icon" className="rounded-full">
+          <Button type="submit" size="icon" className="rounded-full" disabled={!message.trim() || sending}>
             <Send className="w-4 h-4" />
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground text-center mt-2">
-          Press Enter to send, Shift + Enter for new line
-        </p>
       </form>
     </div>
   );
