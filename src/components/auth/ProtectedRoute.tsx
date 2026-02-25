@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
@@ -10,6 +11,8 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
   const location = useLocation();
+  // This triggers permission requests on first launch
+  usePermissions();
 
   if (loading) {
     return (
@@ -20,7 +23,6 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!user) {
-    // Redirect to sign-in page but save the attempted url
     return <Navigate to="/sign-in" state={{ from: location }} replace />;
   }
 

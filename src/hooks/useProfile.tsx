@@ -24,6 +24,7 @@ export interface Profile {
   skills: string[];
   avatar_url: string | null;
   documents_uploaded: boolean;
+  is_verified: boolean | null;
   created_at: string;
   updated_at: string;
 }
