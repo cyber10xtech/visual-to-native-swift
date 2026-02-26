@@ -35,13 +35,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener BEFORE checking current session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth event:", event);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        
+        // Persist session indicator for faster restores
+        if (session) {
+          localStorage.setItem("safesight_has_session", "true");
+        } else if (event === "SIGNED_OUT") {
+          localStorage.removeItem("safesight_has_session");
+        }
       }
     );
 
-    // Check current session
+    // Check current session - critical for persistence across reloads
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
