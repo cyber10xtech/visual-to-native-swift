@@ -16,20 +16,28 @@ const BookingRequest = () => {
   const { createBooking } = useBookings();
   const { getProfessionalById } = useProfessionals();
   const [isLoading, setIsLoading] = useState(false);
-  const [professional, setProfessional] = useState<{ user_id: string; full_name: string } | null>(null);
+  const [professional, setProfessional] = useState<{
+    user_id: string | null;
+    full_name: string;
+    account_type: "professional" | "handyman";
+  } | null>(null);
 
   useEffect(() => {
     const loadProfessional = async () => {
       if (professionalId) {
         const { data } = await getProfessionalById(professionalId);
         if (data) {
-          setProfessional({ user_id: data.user_id, full_name: data.full_name });
+          setProfessional({
+            user_id: data.user_id,
+            full_name: data.full_name,
+            account_type: data.account_type,
+          });
         }
       }
     };
     loadProfessional();
   }, [professionalId]);
-  
+
   const [formData, setFormData] = useState({
     serviceType: "",
     description: "",
@@ -38,12 +46,12 @@ const BookingRequest = () => {
   });
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!professionalId) {
       toast.error("Professional not found");
       return;
@@ -56,15 +64,14 @@ const BookingRequest = () => {
 
     setIsLoading(true);
 
-    const bookingDate = formData.scheduledTime 
-      ? `${formData.scheduledDate}T${formData.scheduledTime}:00`
-      : `${formData.scheduledDate}T00:00:00`;
-
+    // Unified schema uses separate DATE and TIME columns — don't combine into TIMESTAMPTZ
     const { error } = await createBooking({
-      pro_id: professionalId,
+      professional_id: professionalId, // was: pro_id
       service_type: formData.serviceType,
+      service_category: professional?.account_type ?? "handyman", // required field
       description: formData.description || undefined,
-      booking_date: bookingDate,
+      scheduled_date: formData.scheduledDate, // was: booking_date
+      scheduled_time: formData.scheduledTime || undefined,
     });
 
     setIsLoading(false);
@@ -74,13 +81,14 @@ const BookingRequest = () => {
       return;
     }
 
-    // Send notification to professional
-    if (professional) {
+    // Notify the professional — user_type is 'professional'
+    if (professional?.user_id) {
       await createNotification(
         professional.user_id,
-        'booking',
-        'New Booking Request',
+        "booking",
+        "New Booking Request",
         `You have a new booking request for ${formData.serviceType} on ${formData.scheduledDate}`,
+        "professional",
       );
     }
 
@@ -165,16 +173,8 @@ const BookingRequest = () => {
             />
           </div>
 
-          <Button 
-            type="submit" 
-            className="w-full h-12 rounded-xl"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              "Send Booking Request"
-            )}
+          <Button type="submit" className="w-full h-12 rounded-xl" disabled={isLoading}>
+            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Send Booking Request"}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center">

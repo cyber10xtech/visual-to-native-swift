@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Eye, EyeOff, Loader2, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,9 +13,9 @@ import logo from "@/assets/logo.png";
 
 const CustomerRegister = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +27,7 @@ const CustomerRegister = () => {
   });
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +39,7 @@ const CustomerRegister = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -52,37 +53,31 @@ const CustomerRegister = () => {
     setIsLoading(true);
 
     try {
-      const { data: authData, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/home`,
-          data: {
-            full_name: formData.fullName,
-          },
-        },
-      });
+      // signUp sends full_name in metadata — trigger creates customer_profiles row
+      const { error: signUpError } = await signUp(formData.email, formData.password, { fullName: formData.fullName });
 
-      if (error) throw error;
+      if (signUpError) throw signUpError;
 
-      // Upload avatar if selected
-      if (avatarFile && authData.user) {
-        const fileExt = avatarFile.name.split(".").pop();
-        const filePath = `${authData.user.id}/avatar.${fileExt}`;
+      // If an avatar was selected, get the user id and upload it
+      if (avatarFile) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
 
-        await supabase.storage
-          .from("avatars")
-          .upload(filePath, avatarFile, { upsert: true });
+        if (userId) {
+          const fileExt = avatarFile.name.split(".").pop();
+          const filePath = `${userId}/avatar.${fileExt}`;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from("avatars")
-          .getPublicUrl(filePath);
+          await supabase.storage.from("avatars").upload(filePath, avatarFile, { upsert: true });
 
-        // Update profile with avatar URL
-        await supabase
-          .from("profiles")
-          .update({ avatar_url: publicUrl })
-          .eq("user_id", authData.user.id);
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+          // Update customer_profiles (not profiles) with the avatar URL
+          await supabase.from("customer_profiles").update({ avatar_url: publicUrl }).eq("user_id", userId);
+        }
       }
 
       toast.success("Account created! Please check your email to verify your account.");
@@ -99,7 +94,12 @@ const CustomerRegister = () => {
   };
 
   const initials = formData.fullName
-    ? formData.fullName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+    ? formData.fullName
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
     : "?";
 
   return (
@@ -129,13 +129,7 @@ const CustomerRegister = () => {
               >
                 <Camera className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarSelect}
-                className="hidden"
-              />
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarSelect} className="hidden" />
             </div>
             <button
               type="button"
@@ -193,13 +187,28 @@ const CustomerRegister = () => {
                 </button>
               </div>
               <div className="space-y-1 mt-2">
-                <p className={cn("text-xs flex items-center gap-1", formData.password.length >= 6 ? "text-primary" : "text-muted-foreground")}>
+                <p
+                  className={cn(
+                    "text-xs flex items-center gap-1",
+                    formData.password.length >= 6 ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
                   {formData.password.length >= 6 ? "✓" : "○"} At least 6 characters
                 </p>
-                <p className={cn("text-xs flex items-center gap-1", /[a-zA-Z]/.test(formData.password) ? "text-primary" : "text-muted-foreground")}>
+                <p
+                  className={cn(
+                    "text-xs flex items-center gap-1",
+                    /[a-zA-Z]/.test(formData.password) ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
                   {/[a-zA-Z]/.test(formData.password) ? "✓" : "○"} Contains a letter
                 </p>
-                <p className={cn("text-xs flex items-center gap-1", /[0-9]/.test(formData.password) ? "text-primary" : "text-muted-foreground")}>
+                <p
+                  className={cn(
+                    "text-xs flex items-center gap-1",
+                    /[0-9]/.test(formData.password) ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
                   {/[0-9]/.test(formData.password) ? "✓" : "○"} Contains a number
                 </p>
               </div>
@@ -218,11 +227,7 @@ const CustomerRegister = () => {
               />
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full h-12 rounded-xl"
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full h-12 rounded-xl" disabled={isLoading}>
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Create Account"}
             </Button>
           </form>
