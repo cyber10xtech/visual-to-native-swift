@@ -6,7 +6,7 @@ import type { Profile } from "./useProfile";
 export interface Favorite {
   id: string;
   customer_id: string;
-  pro_id: string;
+  professional_id: string; // unified schema uses professional_id (not pro_id)
   created_at: string;
   professional?: Profile;
 }
@@ -28,10 +28,18 @@ export const useFavorites = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("favorites")
-        .select(`
+        .select(
+          `
           *,
-          professional:profiles!favorites_professional_id_fkey(*)
-        `)
+          professional:profiles!favorites_professional_id_fkey(
+            id, user_id, account_type, full_name,
+            profession_specialty, handyman_specialty,
+            bio, location, daily_rate, contract_rate,
+            skills, avatar_url, documents_uploaded, is_verified,
+            created_at, updated_at
+          )
+        `,
+        )
         .eq("customer_id", profile.id)
         .order("created_at", { ascending: false });
 
@@ -52,12 +60,10 @@ export const useFavorites = () => {
     if (!profile?.id) return { error: new Error("No customer profile") };
 
     try {
-      const { error } = await supabase
-        .from("favorites")
-        .insert({
-          customer_id: profile.id,
-          pro_id: professionalId,
-        });
+      const { error } = await supabase.from("favorites").insert({
+        customer_id: profile.id,
+        professional_id: professionalId, // was: pro_id
+      });
 
       if (error) throw error;
       await fetchFavorites();
@@ -75,7 +81,7 @@ export const useFavorites = () => {
         .from("favorites")
         .delete()
         .eq("customer_id", profile.id)
-        .eq("pro_id", professionalId);
+        .eq("professional_id", professionalId); // was: pro_id
 
       if (error) throw error;
       await fetchFavorites();
@@ -86,7 +92,7 @@ export const useFavorites = () => {
   };
 
   const isFavorite = (professionalId: string) => {
-    return favorites.some(f => f.pro_id === professionalId);
+    return favorites.some((f) => f.professional_id === professionalId);
   };
 
   return { favorites, loading, error, addFavorite, removeFavorite, isFavorite, refetch: fetchFavorites };

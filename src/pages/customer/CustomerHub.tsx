@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Heart, AlertCircle, Sparkles, Clock, AlertTriangle, Loader2 } from "lucide-react";
+import { Calendar, Heart, AlertCircle, Clock, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 import ProfessionalCard from "@/components/customer/ProfessionalCard";
@@ -12,20 +12,33 @@ import { useBookings } from "@/hooks/useBookings";
 type HubTab = "bookings" | "favorites" | "emergency";
 
 const mapBookingStatus = (status: string): "upcoming" | "in_progress" | "completed" | "pending" => {
-  switch (status.toUpperCase()) {
-    case "CONFIRMED": return "upcoming";
-    case "IN_PROGRESS": return "in_progress";
-    case "COMPLETED": return "completed";
-    case "CANCELLED": return "completed";
-    default: return "pending";
+  switch (status.toLowerCase()) {
+    case "confirmed":
+      return "upcoming";
+    case "in_progress":
+      return "in_progress";
+    case "completed":
+      return "completed";
+    case "cancelled":
+      return "completed";
+    default:
+      return "pending";
   }
+};
+
+// Resolve profession display label from unified schema specialty columns
+const getProfession = (professional: any): string => {
+  if (!professional) return "";
+  // profiles_compat_view exposes `profession`; direct profiles join exposes specialty enums
+  if (professional.profession) return professional.profession;
+  return professional.profession_specialty ?? professional.handyman_specialty ?? "";
 };
 
 const CustomerHub = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as HubTab) || "bookings";
-  
+
   const [activeHubTab, setActiveHubTab] = useState<HubTab>(initialTab);
 
   const { professionals, loading: professionalsLoading } = useProfessionals();
@@ -38,10 +51,12 @@ const CustomerHub = () => {
     }
   };
 
-  const emergencyProfessions = ["Plumber", "Electrician", "AC Installer", "Welder"];
-  const emergencyProfessionals = professionals.filter(p => 
-    emergencyProfessions.some(ep => p.profession?.toLowerCase() === ep.toLowerCase())
-  );
+  // Emergency filter — matches on enum values or display labels
+  const emergencySpecialties = ["plumber", "electrician", "ac_installer"];
+  const emergencyProfessionals = professionals.filter((p) => {
+    const prof = (p.profession ?? "").toLowerCase().replace(/\s+/g, "_");
+    return emergencySpecialties.includes(prof);
+  });
 
   const hubTabs = [
     { id: "bookings" as const, label: "Bookings", icon: Calendar },
@@ -70,13 +85,14 @@ const CustomerHub = () => {
           ))}
         </div>
 
-        {/* Bookings Tab */}
+        {/* ── Bookings ─────────────────────────────────────────────────────── */}
         {activeHubTab === "bookings" && (
           <>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-foreground">My Bookings</h2>
               <span className="text-sm text-muted-foreground">{bookings.length} total</span>
             </div>
+
             {bookingsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -93,7 +109,12 @@ const CustomerHub = () => {
             ) : (
               <div className="space-y-3">
                 {bookings.map((booking, index) => {
-                  const bookingDate = booking.booking_date ? new Date(booking.booking_date) : null;
+                  // Unified schema: scheduled_date (DATE) + scheduled_time (TIME)
+                  const dateStr = booking.scheduled_date ?? null;
+                  const timeStr = booking.scheduled_time ?? null;
+                  const dateDisplay = dateStr ? new Date(dateStr).toLocaleDateString() : "TBD";
+                  const timeDisplay = timeStr ?? "TBD";
+
                   return (
                     <CustomerBookingCard
                       key={booking.id}
@@ -101,11 +122,11 @@ const CustomerHub = () => {
                       number={bookings.length - index}
                       title={booking.service_type}
                       professionalName={booking.professional?.full_name || "Professional"}
-                      profession={booking.professional?.profession || ""}
-                      date={bookingDate?.toLocaleDateString() || "TBD"}
-                      time={bookingDate?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "TBD"}
+                      profession={getProfession(booking.professional)}
+                      date={dateDisplay}
+                      time={timeDisplay}
                       location={booking.professional?.location || ""}
-                      price={booking.amount}
+                      price={booking.rate_amount ?? 0} // was: booking.amount
                       status={mapBookingStatus(booking.status)}
                     />
                   );
@@ -115,13 +136,14 @@ const CustomerHub = () => {
           </>
         )}
 
-        {/* Favorites Tab */}
+        {/* ── Favorites ────────────────────────────────────────────────────── */}
         {activeHubTab === "favorites" && (
           <>
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-foreground">Favorites</h2>
               <span className="text-sm text-muted-foreground">{favorites.length} saved</span>
             </div>
+
             {favoritesLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -137,9 +159,9 @@ const CustomerHub = () => {
                 {favorites.map((fav) => (
                   <ProfessionalCard
                     key={fav.id}
-                    id={fav.pro_id}
+                    id={fav.professional_id} // was: fav.pro_id
                     name={fav.professional?.full_name || "Professional"}
-                    profession={fav.professional?.profession || "Professional"}
+                    profession={getProfession(fav.professional) || "Professional"}
                     location={fav.professional?.location || "Location not set"}
                     lastActive="Recently"
                     rating={4.8}
@@ -148,8 +170,8 @@ const CustomerHub = () => {
                     dailyRate={fav.professional?.daily_rate ? parseInt(fav.professional.daily_rate) : 0}
                     variant="favorite"
                     isFavorite={true}
-                    onBook={() => navigate(`/professional/${fav.pro_id}`)}
-                    onFavoriteToggle={() => handleToggleFavorite(fav.pro_id)}
+                    onBook={() => navigate(`/professional/${fav.professional_id}`)}
+                    onFavoriteToggle={() => handleToggleFavorite(fav.professional_id)}
                   />
                 ))}
               </div>
@@ -157,7 +179,7 @@ const CustomerHub = () => {
           </>
         )}
 
-        {/* Emergency Tab */}
+        {/* ── Emergency ────────────────────────────────────────────────────── */}
         {activeHubTab === "emergency" && (
           <>
             <div className="bg-destructive rounded-xl p-4 mb-4">
@@ -165,9 +187,7 @@ const CustomerHub = () => {
                 <AlertCircle className="w-5 h-5 text-destructive-foreground" />
                 <h2 className="font-semibold text-destructive-foreground">Emergency Services</h2>
               </div>
-              <p className="text-sm text-destructive-foreground/80">
-                Available 24/7 for urgent repairs
-              </p>
+              <p className="text-sm text-destructive-foreground/80">Available 24/7 for urgent repairs</p>
             </div>
 
             <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-3 mb-4">
@@ -202,7 +222,7 @@ const CustomerHub = () => {
                     key={professional.id}
                     id={professional.id}
                     name={professional.full_name}
-                    profession={professional.profession || "Professional"}
+                    profession={getProfession(professional) || "Professional"}
                     location={professional.location || "Location not set"}
                     lastActive="Recently"
                     rating={4.8}
