@@ -6,22 +6,16 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, profileData: ProfileData) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, profileData: CustomerProfileData) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
-interface ProfileData {
-  accountType: "professional" | "handyman";
+// Customer app only needs name — no account_type, no profession.
+// The DB trigger (handle_new_user) routes to customer_profiles when
+// account_type is absent from metadata.
+export interface CustomerProfileData {
   fullName: string;
-  profession?: string;
-  bio?: string;
-  location?: string;
-  phoneNumber?: string;
-  whatsappNumber?: string;
-  dailyRate?: string;
-  contractRate?: string;
-  skills?: string[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,24 +26,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener BEFORE checking current session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("Auth event:", event);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        // Persist session indicator for faster restores
-        if (session) {
-          localStorage.setItem("safesight_has_session", "true");
-        } else if (event === "SIGNED_OUT") {
-          localStorage.removeItem("safesight_has_session");
-        }
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-    // Check current session - critical for persistence across reloads
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -59,44 +43,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, profileData: ProfileData) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    profileData: CustomerProfileData,
+  ): Promise<{ error: Error | null }> => {
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: `${window.location.origin}/home`,
+          data: {
+            // No account_type → trigger routes this user to customer_profiles
+            full_name: profileData.fullName,
+          },
         },
       });
 
       if (error) throw error;
 
-      // Create profile after successful signup
-      if (data.user) {
-        const { data: profileRow, error: profileError } = await supabase.from("profiles").insert({
-          user_id: data.user.id,
-          account_type: profileData.accountType,
-          full_name: profileData.fullName,
-          profession: profileData.profession || null,
-          bio: profileData.bio || null,
-          location: profileData.location || null,
-          daily_rate: profileData.dailyRate || null,
-          contract_rate: profileData.contractRate || null,
-          skills: profileData.skills || [],
-        }).select("id").single();
-
-        if (profileError) throw profileError;
-
-        // Store sensitive contact info in separate private table
-        if (profileRow && (profileData.phoneNumber || profileData.whatsappNumber)) {
-          const { error: privateError } = await supabase.from("profiles_private").insert({
-            profile_id: profileRow.id,
-            phone_number: profileData.phoneNumber || null,
-            whatsapp_number: profileData.whatsappNumber || null,
-          });
-          if (privateError) throw privateError;
-        }
-      }
+      // DO NOT manually insert into profiles or customer_profiles here.
+      // The handle_new_user DB trigger creates the customer_profiles row
+      // automatically, including a unique referral_code.
 
       return { error: null };
     } catch (error) {
@@ -106,11 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       return { error: null };
     } catch (error) {
@@ -123,9 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>{children}</AuthContext.Provider>
   );
 };
 
