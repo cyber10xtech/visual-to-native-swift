@@ -11,12 +11,14 @@ export interface ProfilePrivate {
   updated_at: string;
 }
 
+// Profile shape for professionals/handymen as seen by a customer.
+// `profession` is the human-readable label resolved via profiles_compat_view.
 export interface Profile {
   id: string;
-  user_id: string;
+  user_id: string | null;
   account_type: "professional" | "handyman";
   full_name: string;
-  profession: string | null;
+  profession: string | null; // merged specialty text from compat view
   bio: string | null;
   location: string | null;
   daily_rate: string | null;
@@ -34,7 +36,9 @@ export interface ProfileWithContact extends Profile {
   whatsapp_number: string | null;
 }
 
-export const useProfile = () => {
+// Used when a customer wants to view a professional's full public profile
+// (including contact info they're entitled to after a booking).
+export const useProfile = (profileId?: string) => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileWithContact | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +46,8 @@ export const useProfile = () => {
   const [profileExists, setProfileExists] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!user) {
+    const targetId = profileId ?? user?.id;
+    if (!targetId) {
       setProfile(null);
       setLoading(false);
       setProfileExists(null);
@@ -52,16 +57,24 @@ export const useProfile = () => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
+
+        // profiles_compat_view exposes `profession` as a merged text column
+        // (coalesce of profession_specialty + handyman_specialty).
+        const column = profileId ? "id" : "user_id";
         const { data, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("user_id", user.id)
+          .from("profiles_compat_view")
+          .select(
+            "id, user_id, account_type, full_name, profession, bio, location, " +
+              "daily_rate, contract_rate, skills, avatar_url, " +
+              "documents_uploaded, is_verified, created_at, updated_at",
+          )
+          .eq(column, targetId)
           .maybeSingle();
 
         if (error) throw error;
 
         if (data) {
-          // Fetch private contact data (owner-only via RLS)
+          // Fetch private contact info (only visible if RLS allows it)
           const { data: privateData } = await supabase
             .from("profiles_private")
             .select("phone_number, whatsapp_number")
@@ -69,7 +82,21 @@ export const useProfile = () => {
             .maybeSingle();
 
           const merged: ProfileWithContact = {
-            ...(data as Profile),
+            id: data.id,
+            user_id: data.user_id,
+            account_type: data.account_type as "professional" | "handyman",
+            full_name: data.full_name,
+            profession: (data as any).profession ?? null,
+            bio: (data as any).bio ?? null,
+            location: (data as any).location ?? null,
+            daily_rate: (data as any).daily_rate ?? null,
+            contract_rate: (data as any).contract_rate ?? null,
+            skills: (data as any).skills ?? [],
+            avatar_url: (data as any).avatar_url ?? null,
+            documents_uploaded: (data as any).documents_uploaded ?? false,
+            is_verified: (data as any).is_verified ?? null,
+            created_at: data.created_at,
+            updated_at: data.updated_at,
             phone_number: privateData?.phone_number ?? null,
             whatsapp_number: privateData?.whatsapp_number ?? null,
           };
@@ -88,77 +115,7 @@ export const useProfile = () => {
     };
 
     fetchProfile();
-  }, [user]);
+  }, [user, profileId]);
 
-  const updateProfile = async (updates: Partial<Omit<Profile, "id" | "user_id" | "account_type" | "created_at" | "updated_at">> & {
-    phone_number?: string | null;
-    whatsapp_number?: string | null;
-  }) => {
-    if (!user || !profile) return { error: new Error("Not authenticated") };
-
-    try {
-      // Separate contact fields from profile fields
-      const { phone_number, whatsapp_number, ...profileUpdates } = updates;
-
-      // Update main profile if there are profile fields to update
-      if (Object.keys(profileUpdates).length > 0) {
-        const { error } = await supabase
-          .from("profiles")
-          .update(profileUpdates)
-          .eq("user_id", user.id);
-        if (error) throw error;
-      }
-
-      // Update private contact data if contact fields provided
-      if (phone_number !== undefined || whatsapp_number !== undefined) {
-        const contactUpdate: Record<string, string | null> = {};
-        if (phone_number !== undefined) contactUpdate.phone_number = phone_number;
-        if (whatsapp_number !== undefined) contactUpdate.whatsapp_number = whatsapp_number;
-
-        // Upsert: update if exists, insert if not
-        const { data: existing } = await supabase
-          .from("profiles_private")
-          .select("id")
-          .eq("profile_id", profile.id)
-          .maybeSingle();
-
-        if (existing) {
-          const { error } = await supabase
-            .from("profiles_private")
-            .update(contactUpdate)
-            .eq("profile_id", profile.id);
-          if (error) throw error;
-        } else {
-          const { error } = await supabase
-            .from("profiles_private")
-            .insert({ profile_id: profile.id, ...contactUpdate });
-          if (error) throw error;
-        }
-      }
-
-      // Refetch full profile
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-
-      const { data: privateData } = await supabase
-        .from("profiles_private")
-        .select("phone_number, whatsapp_number")
-        .eq("profile_id", data.id)
-        .maybeSingle();
-
-      setProfile({
-        ...(data as Profile),
-        phone_number: privateData?.phone_number ?? null,
-        whatsapp_number: privateData?.whatsapp_number ?? null,
-      });
-      return { error: null };
-    } catch (err) {
-      return { error: err as Error };
-    }
-  };
-
-  return { profile, loading, error, updateProfile, profileExists };
+  return { profile, loading, error, profileExists };
 };
