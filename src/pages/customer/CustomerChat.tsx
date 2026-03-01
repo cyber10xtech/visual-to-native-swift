@@ -1,250 +1,121 @@
-import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Paperclip, Send, Loader2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useNavigate, useParams } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "./useAuth";
 
-interface Message {
+export interface ProfilePrivate {
   id: string;
-  content: string;
-  sender_id: string;
+  profile_id: string;
+  phone_number: string | null;
+  whatsapp_number: string | null;
   created_at: string;
-  is_read: boolean;
+  updated_at: string;
 }
 
-interface Professional {
+// Profile shape for professionals/handymen as seen by a customer.
+// `profession` is the human-readable label resolved via profiles_compat_view.
+export interface Profile {
+  id: string;
+  user_id: string | null;
+  account_type: "professional" | "handyman";
   full_name: string;
-  profession: string | null;
+  profession: string | null; // merged specialty text from compat view
+  bio: string | null;
+  location: string | null;
+  daily_rate: string | null;
+  contract_rate: string | null;
+  skills: string[];
   avatar_url: string | null;
+  documents_uploaded: boolean;
+  is_verified: boolean | null;
+  created_at: string;
+  updated_at: string;
 }
 
-const CustomerChat = () => {
-  const navigate = useNavigate();
-  const { id: conversationId } = useParams<{ id: string }>();
+export interface ProfileWithContact extends Profile {
+  phone_number: string | null;
+  whatsapp_number: string | null;
+}
+
+// Used when a customer wants to view a professional's full public profile
+// (including contact info they're entitled to after a booking).
+export const useProfile = (profileId?: string) => {
   const { user } = useAuth();
-  const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [professional, setProfessional] = useState<Professional | null>(null);
-  const [profileId, setProfileId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<ProfileWithContact | null>(null);
   const [loading, setLoading] = useState(true);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const [error, setError] = useState<Error | null>(null);
+  const [profileExists, setProfileExists] = useState<boolean | null>(null);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    const targetId = profileId ?? user?.id;
+    if (!targetId) {
+      setProfile(null);
+      setLoading(false);
+      setProfileExists(null);
+      return;
+    }
 
-  // Fetch profile ID, conversation details, and messages
-  useEffect(() => {
-    if (!user || !conversationId) return;
-
-    const init = async () => {
+    const fetchProfile = async () => {
       try {
-        // Get own profile id
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", user.id)
-          .single();
+        setLoading(true);
 
-        if (profile) setProfileId(profile.id);
+        // profiles_compat_view exposes `profession` as a merged text column
+        // (coalesce of profession_specialty + handyman_specialty).
+        const column = profileId ? "id" : "user_id";
+        const { data, error } = await supabase
+          .from("profiles_compat_view")
+          .select(
+            "id, user_id, account_type, full_name, profession, bio, location, " +
+              "daily_rate, contract_rate, skills, avatar_url, " +
+              "documents_uploaded, is_verified, created_at, updated_at",
+          )
+          .eq(column, targetId)
+          .maybeSingle();
 
-        // Get conversation with professional info
-        const { data: conv } = await supabase
-          .from("conversations")
-          .select(`
-            pro_id,
-            professional:profiles!conversations_professional_id_fkey (
-              full_name,
-              profession,
-              avatar_url
-            )
-          `)
-          .eq("id", conversationId)
-          .single();
+        if (error) throw error;
 
-        if (conv?.professional) {
-          setProfessional(conv.professional as unknown as Professional);
-        }
+        if (data) {
+          // Fetch private contact info (only visible if RLS allows it)
+          const { data: privateData } = await supabase
+            .from("profiles_private")
+            .select("phone_number, whatsapp_number")
+            .eq("profile_id", data.id)
+            .maybeSingle();
 
-        // Fetch messages
-        const { data: msgs } = await supabase
-          .from("messages")
-          .select("*")
-          .eq("conversation_id", conversationId)
-          .order("created_at", { ascending: true });
-
-        setMessages(msgs || []);
-
-        // Mark unread messages as read
-        if (profile) {
-          await supabase
-            .from("messages")
-            .update({ is_read: true })
-            .eq("conversation_id", conversationId)
-            .neq("sender_id", profile.id)
-            .eq("is_read", false);
+          const merged: ProfileWithContact = {
+            id: data.id,
+            user_id: data.user_id,
+            account_type: data.account_type as "professional" | "handyman",
+            full_name: data.full_name,
+            profession: (data as any).profession ?? null,
+            bio: (data as any).bio ?? null,
+            location: (data as any).location ?? null,
+            daily_rate: (data as any).daily_rate ?? null,
+            contract_rate: (data as any).contract_rate ?? null,
+            skills: (data as any).skills ?? [],
+            avatar_url: (data as any).avatar_url ?? null,
+            documents_uploaded: (data as any).documents_uploaded ?? false,
+            is_verified: (data as any).is_verified ?? null,
+            created_at: data.created_at,
+            updated_at: data.updated_at,
+            phone_number: privateData?.phone_number ?? null,
+            whatsapp_number: privateData?.whatsapp_number ?? null,
+          };
+          setProfile(merged);
+          setProfileExists(true);
+        } else {
+          setProfile(null);
+          setProfileExists(false);
         }
       } catch (err) {
-        console.error("Error loading chat:", err);
+        setError(err as Error);
+        setProfileExists(false);
       } finally {
         setLoading(false);
       }
     };
 
-    init();
-  }, [user, conversationId]);
+    fetchProfile();
+  }, [user, profileId]);
 
-  // Subscribe to realtime messages
-  useEffect(() => {
-    if (!conversationId) return;
-
-    const channel = supabase
-      .channel(`chat-${conversationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as Message;
-          setMessages((prev) => {
-            if (prev.find((m) => m.id === newMsg.id)) return prev;
-            return [...prev, newMsg];
-          });
-
-          // Auto-mark as read if from other person
-          if (profileId && newMsg.sender_id !== profileId) {
-            supabase
-              .from("messages")
-              .update({ is_read: true })
-              .eq("id", newMsg.id);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [conversationId, profileId]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim() || !profileId || !conversationId) return;
-
-    const content = message.trim();
-    setMessage("");
-
-    const { error } = await supabase.from("messages").insert({
-      conversation_id: conversationId,
-      sender_id: profileId,
-      content,
-    });
-
-    if (error) {
-      console.error("Failed to send message:", error);
-      setMessage(content);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const proName = professional?.full_name || "Professional";
-  const proInitial = proName.charAt(0).toUpperCase();
-
-  return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="bg-card border-b border-border px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)}>
-              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-            </button>
-            <Avatar className="w-10 h-10">
-              <AvatarImage src={professional?.avatar_url || undefined} alt={proName} />
-              <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
-                {proInitial}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="font-semibold text-foreground">{proName}</h1>
-              <span className="text-xs text-muted-foreground">{professional?.profession || "Professional"}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            No messages yet. Start the conversation!
-          </div>
-        )}
-        {messages.map((msg) => {
-          const isMe = msg.sender_id === profileId;
-          return (
-            <div
-              key={msg.id}
-              className={cn(
-                "max-w-[80%] rounded-2xl px-4 py-2",
-                isMe
-                  ? "ml-auto bg-primary text-primary-foreground rounded-br-sm"
-                  : "mr-auto bg-muted text-foreground rounded-bl-sm"
-              )}
-            >
-              <p className="text-sm">{msg.content}</p>
-              <span
-                className={cn(
-                  "text-xs block mt-1",
-                  isMe ? "text-primary-foreground/70" : "text-muted-foreground"
-                )}
-              >
-                {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-border bg-card">
-        <div className="flex items-center gap-2">
-          <button type="button" className="text-muted-foreground hover:text-foreground">
-            <Paperclip className="w-5 h-5" />
-          </button>
-          <Input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 h-10 bg-muted/50 border border-border rounded-xl"
-          />
-          <Button type="submit" size="icon" className="rounded-full" disabled={!message.trim()}>
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-      </form>
-    </div>
-  );
+  return { profile, loading, error, profileExists };
 };
-
-export default CustomerChat;
