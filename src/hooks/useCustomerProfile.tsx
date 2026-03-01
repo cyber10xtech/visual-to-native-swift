@@ -2,20 +2,22 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
+// Matches the customer_profiles table in the unified schema.
+// Note: columns from the old profiles table that don't exist here:
+//   account_type, location, interests — removed.
 export interface CustomerProfile {
   id: string;
   user_id: string;
-  account_type: string | null;
   full_name: string;
   email: string | null;
+  phone: string | null;
+  whatsapp_number: string | null;
   address: string | null;
   city: string | null;
   zip_code: string | null;
   avatar_url: string | null;
   referral_code: string | null;
   referral_credits: number | null;
-  location: string | null;
-  interests: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,19 +37,11 @@ export const useCustomerProfile = () => {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      // Customer data lives in customer_profiles, NOT profiles
+      const { data, error } = await supabase.from("customer_profiles").select("*").eq("user_id", user.id).maybeSingle();
 
       if (error) throw error;
-
-      if (data) {
-        setProfile(data as CustomerProfile);
-      } else {
-        setProfile(null);
-      }
+      setProfile((data as CustomerProfile) ?? null);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -59,18 +53,19 @@ export const useCustomerProfile = () => {
     fetchProfile();
   }, [user]);
 
-  const updateProfile = async (updates: Partial<Omit<CustomerProfile, "id" | "user_id" | "created_at" | "updated_at" | "email">>) => {
+  const updateProfile = async (
+    updates: Partial<Omit<CustomerProfile, "id" | "user_id" | "created_at" | "updated_at" | "email" | "referral_code">>,
+  ) => {
     if (!user || !profile) return { error: new Error("Not authenticated") };
 
     try {
       const { error } = await supabase
-        .from("profiles")
+        .from("customer_profiles")
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq("user_id", user.id);
 
       if (error) throw error;
 
-      // Refetch to get fresh data
       await fetchProfile();
       return { error: null };
     } catch (err) {
@@ -78,5 +73,5 @@ export const useCustomerProfile = () => {
     }
   };
 
-  return { profile, loading, error, updateProfile };
+  return { profile, loading, error, updateProfile, refetch: fetchProfile };
 };
