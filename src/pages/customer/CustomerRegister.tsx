@@ -75,8 +75,8 @@ const CustomerRegister = () => {
             data: { publicUrl },
           } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
-          // Update customer_profiles (not profiles) with the avatar URL
-          await supabase.from("customer_profiles").update({ avatar_url: publicUrl }).eq("user_id", userId);
+          // Update profiles with the avatar URL
+          await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("user_id", userId);
         }
       }
 

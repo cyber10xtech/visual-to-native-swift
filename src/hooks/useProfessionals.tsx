@@ -3,15 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Profile } from "./useProfile";
 
 const escapeIlikePattern = (str: string): string => str.replace(/[%_\\]/g, "\\$&");
-
 const sanitizeSearchInput = (input: string, maxLength = 100): string =>
   escapeIlikePattern(input.trim().slice(0, maxLength));
 
-// profiles_compat_view exposes `profession` as a single merged text column
-// (coalesce of profession_specialty + handyman_specialty enum values).
-const COMPAT_VIEW_FIELDS = ("id,user_id,account_type,full_name,profession,bio,location," +
-  "daily_rate,contract_rate,skills,avatar_url,documents_uploaded," +
-  "is_verified,created_at,updated_at") as const;
+const PROFILE_FIELDS = "id,user_id,account_type,full_name,profession,bio,location,daily_rate,contract_rate,skills,avatar_url,documents_uploaded,is_verified,created_at,updated_at";
 
 export const useProfessionals = () => {
   const [professionals, setProfessionals] = useState<Profile[]>([]);
@@ -19,7 +14,7 @@ export const useProfessionals = () => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchProfessionals = async (filters?: {
-    profession?: string; // enum value OR display label — both normalised below
+    profession?: string;
     location?: string;
     search?: string;
     accountType?: "professional" | "handyman";
@@ -28,8 +23,8 @@ export const useProfessionals = () => {
       setLoading(true);
 
       let query = supabase
-        .from("profiles_compat_view")
-        .select(COMPAT_VIEW_FIELDS)
+        .from("profiles")
+        .select(PROFILE_FIELDS)
         .in("account_type", ["professional", "handyman"])
         .order("created_at", { ascending: false });
 
@@ -38,9 +33,8 @@ export const useProfessionals = () => {
       }
 
       if (filters?.profession) {
-        // Normalise display labels to enum format (e.g. "Architect" → "architect")
-        const normalised = filters.profession.toLowerCase().replace(/\s+/g, "_");
-        query = query.eq("profession", normalised);
+        const sanitized = sanitizeSearchInput(filters.profession);
+        query = query.ilike("profession", `%${sanitized}%`);
       }
 
       if (filters?.location) {
@@ -56,7 +50,6 @@ export const useProfessionals = () => {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Map raw rows to Profile shape (skills / booleans default-filled)
       const mapped: Profile[] = (data ?? []).map((row: any) => ({
         ...row,
         skills: row.skills ?? [],
@@ -79,8 +72,8 @@ export const useProfessionals = () => {
   const getProfessionalById = async (id: string) => {
     try {
       const { data, error } = await supabase
-        .from("profiles_compat_view")
-        .select(COMPAT_VIEW_FIELDS)
+        .from("profiles")
+        .select(PROFILE_FIELDS)
         .eq("id", id)
         .single();
 

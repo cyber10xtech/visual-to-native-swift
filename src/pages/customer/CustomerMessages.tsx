@@ -1,121 +1,122 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { MessageSquare, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "./useAuth";
+import { useAuth } from "@/hooks/useAuth";
+import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 
-export interface ProfilePrivate {
+interface ConversationItem {
   id: string;
-  profile_id: string;
-  phone_number: string | null;
-  whatsapp_number: string | null;
+  pro_id: string;
   created_at: string;
-  updated_at: string;
+  professional_name: string;
+  professional_avatar: string | null;
+  last_message: string | null;
+  last_message_at: string | null;
+  unread_count: number;
 }
 
-// Profile shape for professionals/handymen as seen by a customer.
-// `profession` is the human-readable label resolved via profiles_compat_view.
-export interface Profile {
-  id: string;
-  user_id: string | null;
-  account_type: "professional" | "handyman";
-  full_name: string;
-  profession: string | null; // merged specialty text from compat view
-  bio: string | null;
-  location: string | null;
-  daily_rate: string | null;
-  contract_rate: string | null;
-  skills: string[];
-  avatar_url: string | null;
-  documents_uploaded: boolean;
-  is_verified: boolean | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ProfileWithContact extends Profile {
-  phone_number: string | null;
-  whatsapp_number: string | null;
-}
-
-// Used when a customer wants to view a professional's full public profile
-// (including contact info they're entitled to after a booking).
-export const useProfile = (profileId?: string) => {
+const CustomerMessages = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const [profile, setProfile] = useState<ProfileWithContact | null>(null);
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [profileExists, setProfileExists] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const targetId = profileId ?? user?.id;
-    if (!targetId) {
-      setProfile(null);
-      setLoading(false);
-      setProfileExists(null);
-      return;
-    }
+    if (!user) return;
 
-    const fetchProfile = async () => {
+    const fetchConversations = async () => {
       try {
-        setLoading(true);
-
-        // profiles_compat_view exposes `profession` as a merged text column
-        // (coalesce of profession_specialty + handyman_specialty).
-        const column = profileId ? "id" : "user_id";
-        const { data, error } = await supabase
-          .from("profiles_compat_view")
-          .select(
-            "id, user_id, account_type, full_name, profession, bio, location, " +
-              "daily_rate, contract_rate, skills, avatar_url, " +
-              "documents_uploaded, is_verified, created_at, updated_at",
-          )
-          .eq(column, targetId)
+        // Get profile id
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", user.id)
           .maybeSingle();
+
+        if (!profileData) { setLoading(false); return; }
+
+        const { data: convos, error } = await supabase
+          .from("conversations")
+          .select(`
+            id, pro_id, created_at,
+            professional:profiles!conversations_professional_id_fkey(full_name, avatar_url)
+          `)
+          .eq("customer_id", profileData.id)
+          .order("created_at", { ascending: false });
 
         if (error) throw error;
 
-        if (data) {
-          // Fetch private contact info (only visible if RLS allows it)
-          const { data: privateData } = await supabase
-            .from("profiles_private")
-            .select("phone_number, whatsapp_number")
-            .eq("profile_id", data.id)
-            .maybeSingle();
+        const items: ConversationItem[] = (convos || []).map((c: any) => ({
+          id: c.id,
+          pro_id: c.pro_id,
+          created_at: c.created_at,
+          professional_name: c.professional?.full_name || "Professional",
+          professional_avatar: c.professional?.avatar_url || null,
+          last_message: null,
+          last_message_at: null,
+          unread_count: 0,
+        }));
 
-          const merged: ProfileWithContact = {
-            id: data.id,
-            user_id: data.user_id,
-            account_type: data.account_type as "professional" | "handyman",
-            full_name: data.full_name,
-            profession: (data as any).profession ?? null,
-            bio: (data as any).bio ?? null,
-            location: (data as any).location ?? null,
-            daily_rate: (data as any).daily_rate ?? null,
-            contract_rate: (data as any).contract_rate ?? null,
-            skills: (data as any).skills ?? [],
-            avatar_url: (data as any).avatar_url ?? null,
-            documents_uploaded: (data as any).documents_uploaded ?? false,
-            is_verified: (data as any).is_verified ?? null,
-            created_at: data.created_at,
-            updated_at: data.updated_at,
-            phone_number: privateData?.phone_number ?? null,
-            whatsapp_number: privateData?.whatsapp_number ?? null,
-          };
-          setProfile(merged);
-          setProfileExists(true);
-        } else {
-          setProfile(null);
-          setProfileExists(false);
-        }
+        setConversations(items);
       } catch (err) {
-        setError(err as Error);
-        setProfileExists(false);
+        console.error("Error fetching conversations:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
-  }, [user, profileId]);
+    fetchConversations();
+  }, [user]);
 
-  return { profile, loading, error, profileExists };
+  return (
+    <div className="min-h-screen bg-background pb-20">
+      <div className="max-w-md mx-auto px-4 py-6">
+        <h1 className="text-xl font-bold text-foreground mb-4">Messages</h1>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : conversations.length === 0 ? (
+          <div className="text-center py-12">
+            <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">No messages yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Start a conversation by booking a professional
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {conversations.map((convo) => (
+              <button
+                key={convo.id}
+                onClick={() => navigate(`/chat/${convo.id}`)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  {convo.professional_avatar ? (
+                    <img src={convo.professional_avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
+                  ) : (
+                    <span className="text-primary font-semibold text-sm">
+                      {convo.professional_name.charAt(0)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">{convo.professional_name}</p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {convo.last_message || "Start a conversation"}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <CustomerBottomNav />
+    </div>
+  );
 };
+
+export default CustomerMessages;

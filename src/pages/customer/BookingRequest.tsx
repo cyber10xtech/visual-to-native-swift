@@ -19,7 +19,7 @@ const BookingRequest = () => {
   const [professional, setProfessional] = useState<{
     user_id: string | null;
     full_name: string;
-    account_type: "professional" | "handyman";
+    account_type: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -64,14 +64,15 @@ const BookingRequest = () => {
 
     setIsLoading(true);
 
-    // Unified schema uses separate DATE and TIME columns — don't combine into TIMESTAMPTZ
+    const bookingDate = formData.scheduledTime
+      ? `${formData.scheduledDate}T${formData.scheduledTime}:00`
+      : `${formData.scheduledDate}T00:00:00`;
+
     const { error } = await createBooking({
-      professional_id: professionalId, // was: pro_id
+      pro_id: professionalId,
       service_type: formData.serviceType,
-      service_category: professional?.account_type ?? "handyman", // required field
       description: formData.description || undefined,
-      scheduled_date: formData.scheduledDate, // was: booking_date
-      scheduled_time: formData.scheduledTime || undefined,
+      booking_date: bookingDate,
     });
 
     setIsLoading(false);
@@ -81,14 +82,12 @@ const BookingRequest = () => {
       return;
     }
 
-    // Notify the professional — user_type is 'professional'
     if (professional?.user_id) {
       await createNotification(
         professional.user_id,
         "booking",
         "New Booking Request",
         `You have a new booking request for ${formData.serviceType} on ${formData.scheduledDate}`,
-        "professional",
       );
     }
 
@@ -98,7 +97,6 @@ const BookingRequest = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <div className="bg-card border-b border-border px-4 py-3">
         <button
           onClick={() => navigate(-1)}
@@ -111,7 +109,6 @@ const BookingRequest = () => {
 
       <div className="max-w-md mx-auto px-4 py-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Service Type */}
           <div className="space-y-2">
             <Label htmlFor="serviceType" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
@@ -128,7 +125,6 @@ const BookingRequest = () => {
             />
           </div>
 
-          {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
@@ -141,7 +137,6 @@ const BookingRequest = () => {
             />
           </div>
 
-          {/* Date */}
           <div className="space-y-2">
             <Label htmlFor="scheduledDate" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
@@ -158,7 +153,6 @@ const BookingRequest = () => {
             />
           </div>
 
-          {/* Time */}
           <div className="space-y-2">
             <Label htmlFor="scheduledTime" className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
