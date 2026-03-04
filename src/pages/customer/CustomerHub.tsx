@@ -109,11 +109,8 @@ const CustomerHub = () => {
             ) : (
               <div className="space-y-3">
                 {bookings.map((booking, index) => {
-                  // Unified schema: scheduled_date (DATE) + scheduled_time (TIME)
-                  const dateStr = booking.scheduled_date ?? null;
-                  const timeStr = booking.scheduled_time ?? null;
-                  const dateDisplay = dateStr ? new Date(dateStr).toLocaleDateString() : "TBD";
-                  const timeDisplay = timeStr ?? "TBD";
+                    const dateDisplay = booking.booking_date ? new Date(booking.booking_date).toLocaleDateString() : "TBD";
+                    const timeDisplay = booking.booking_date ? new Date(booking.booking_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "TBD";
 
                   return (
                     <CustomerBookingCard
@@ -126,7 +123,7 @@ const CustomerHub = () => {
                       date={dateDisplay}
                       time={timeDisplay}
                       location={booking.professional?.location || ""}
-                      price={booking.rate_amount ?? 0} // was: booking.amount
+                      price={booking.amount ?? 0}
                       status={mapBookingStatus(booking.status)}
                     />
                   );
@@ -159,7 +156,7 @@ const CustomerHub = () => {
                 {favorites.map((fav) => (
                   <ProfessionalCard
                     key={fav.id}
-                    id={fav.professional_id} // was: fav.pro_id
+                    id={fav.pro_id}
                     name={fav.professional?.full_name || "Professional"}
                     profession={getProfession(fav.professional) || "Professional"}
                     location={fav.professional?.location || "Location not set"}
@@ -170,8 +167,8 @@ const CustomerHub = () => {
                     dailyRate={fav.professional?.daily_rate ? parseInt(fav.professional.daily_rate) : 0}
                     variant="favorite"
                     isFavorite={true}
-                    onBook={() => navigate(`/professional/${fav.professional_id}`)}
-                    onFavoriteToggle={() => handleToggleFavorite(fav.professional_id)}
+                    onBook={() => navigate(`/professional/${fav.pro_id}`)}
+                    onFavoriteToggle={() => handleToggleFavorite(fav.pro_id)}
                   />
                 ))}
               </div>

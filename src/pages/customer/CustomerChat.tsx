@@ -1,121 +1,161 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Send, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "./useAuth";
+import { useAuth } from "@/hooks/useAuth";
 
-export interface ProfilePrivate {
+interface Message {
   id: string;
-  profile_id: string;
-  phone_number: string | null;
-  whatsapp_number: string | null;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  is_read: boolean | null;
   created_at: string;
-  updated_at: string;
 }
 
-// Profile shape for professionals/handymen as seen by a customer.
-// `profession` is the human-readable label resolved via profiles_compat_view.
-export interface Profile {
-  id: string;
-  user_id: string | null;
-  account_type: "professional" | "handyman";
-  full_name: string;
-  profession: string | null; // merged specialty text from compat view
-  bio: string | null;
-  location: string | null;
-  daily_rate: string | null;
-  contract_rate: string | null;
-  skills: string[];
-  avatar_url: string | null;
-  documents_uploaded: boolean;
-  is_verified: boolean | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ProfileWithContact extends Profile {
-  phone_number: string | null;
-  whatsapp_number: string | null;
-}
-
-// Used when a customer wants to view a professional's full public profile
-// (including contact info they're entitled to after a booking).
-export const useProfile = (profileId?: string) => {
+const CustomerChat = () => {
+  const { id: conversationId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const [profile, setProfile] = useState<ProfileWithContact | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [profileExists, setProfileExists] = useState<boolean | null>(null);
+  const [sending, setSending] = useState(false);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const targetId = profileId ?? user?.id;
-    if (!targetId) {
-      setProfile(null);
-      setLoading(false);
-      setProfileExists(null);
-      return;
-    }
+    if (!user) return;
+    supabase.from("profiles").select("id").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => setProfileId(data?.id ?? null));
+  }, [user]);
 
-    const fetchProfile = async () => {
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const fetchMessages = async () => {
       try {
-        setLoading(true);
-
-        // profiles_compat_view exposes `profession` as a merged text column
-        // (coalesce of profession_specialty + handyman_specialty).
-        const column = profileId ? "id" : "user_id";
         const { data, error } = await supabase
-          .from("profiles_compat_view")
-          .select(
-            "id, user_id, account_type, full_name, profession, bio, location, " +
-              "daily_rate, contract_rate, skills, avatar_url, " +
-              "documents_uploaded, is_verified, created_at, updated_at",
-          )
-          .eq(column, targetId)
-          .maybeSingle();
+          .from("messages")
+          .select("*")
+          .eq("conversation_id", conversationId)
+          .order("created_at", { ascending: true });
 
         if (error) throw error;
-
-        if (data) {
-          // Fetch private contact info (only visible if RLS allows it)
-          const { data: privateData } = await supabase
-            .from("profiles_private")
-            .select("phone_number, whatsapp_number")
-            .eq("profile_id", data.id)
-            .maybeSingle();
-
-          const merged: ProfileWithContact = {
-            id: data.id,
-            user_id: data.user_id,
-            account_type: data.account_type as "professional" | "handyman",
-            full_name: data.full_name,
-            profession: (data as any).profession ?? null,
-            bio: (data as any).bio ?? null,
-            location: (data as any).location ?? null,
-            daily_rate: (data as any).daily_rate ?? null,
-            contract_rate: (data as any).contract_rate ?? null,
-            skills: (data as any).skills ?? [],
-            avatar_url: (data as any).avatar_url ?? null,
-            documents_uploaded: (data as any).documents_uploaded ?? false,
-            is_verified: (data as any).is_verified ?? null,
-            created_at: data.created_at,
-            updated_at: data.updated_at,
-            phone_number: privateData?.phone_number ?? null,
-            whatsapp_number: privateData?.whatsapp_number ?? null,
-          };
-          setProfile(merged);
-          setProfileExists(true);
-        } else {
-          setProfile(null);
-          setProfileExists(false);
-        }
+        setMessages(data || []);
       } catch (err) {
-        setError(err as Error);
-        setProfileExists(false);
+        console.error("Error fetching messages:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfile();
-  }, [user, profileId]);
+    fetchMessages();
 
-  return { profile, loading, error, profileExists };
+    const channel = supabase
+      .channel(`chat-${conversationId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+        filter: `conversation_id=eq.${conversationId}`,
+      }, (payload) => {
+        setMessages((prev) => [...prev, payload.new as Message]);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [conversationId]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!newMessage.trim() || !conversationId || !profileId) return;
+
+    setSending(true);
+    try {
+      const { error } = await supabase.from("messages").insert({
+        conversation_id: conversationId,
+        sender_id: profileId,
+        content: newMessage.trim(),
+      });
+
+      if (error) throw error;
+      setNewMessage("");
+    } catch (err) {
+      console.error("Error sending message:", err);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="bg-card border-b border-border px-4 py-3">
+        <button
+          onClick={() => navigate("/messages")}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="font-medium">Chat</span>
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>No messages yet. Say hello!</p>
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex ${msg.sender_id === profileId ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm ${
+                  msg.sender_id === profileId
+                    ? "bg-primary text-primary-foreground rounded-br-md"
+                    : "bg-muted text-foreground rounded-bl-md"
+                }`}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={scrollRef} />
+      </div>
+
+      <div className="bg-card border-t border-border px-4 py-3">
+        <div className="flex gap-2">
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 rounded-full"
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+          />
+          <Button
+            size="icon"
+            onClick={handleSend}
+            disabled={!newMessage.trim() || sending}
+            className="rounded-full"
+          >
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 };
+
+export default CustomerChat;

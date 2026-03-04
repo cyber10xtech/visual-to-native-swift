@@ -11,14 +11,12 @@ export interface ProfilePrivate {
   updated_at: string;
 }
 
-// Profile shape for professionals/handymen as seen by a customer.
-// `profession` is the human-readable label resolved via profiles_compat_view.
 export interface Profile {
   id: string;
   user_id: string | null;
   account_type: "professional" | "handyman";
   full_name: string;
-  profession: string | null; // merged specialty text from compat view
+  profession: string | null;
   bio: string | null;
   location: string | null;
   daily_rate: string | null;
@@ -36,8 +34,6 @@ export interface ProfileWithContact extends Profile {
   whatsapp_number: string | null;
 }
 
-// Used when a customer wants to view a professional's full public profile
-// (including contact info they're entitled to after a booking).
 export const useProfile = (profileId?: string) => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileWithContact | null>(null);
@@ -58,11 +54,9 @@ export const useProfile = (profileId?: string) => {
       try {
         setLoading(true);
 
-        // profiles_compat_view exposes `profession` as a merged text column
-        // (coalesce of profession_specialty + handyman_specialty).
         const column = profileId ? "id" : "user_id";
         const { data, error } = await supabase
-          .from("profiles_compat_view")
+          .from("profiles")
           .select(
             "id, user_id, account_type, full_name, profession, bio, location, " +
               "daily_rate, contract_rate, skills, avatar_url, " +
@@ -74,29 +68,29 @@ export const useProfile = (profileId?: string) => {
         if (error) throw error;
 
         if (data) {
-          // Fetch private contact info (only visible if RLS allows it)
           const { data: privateData } = await supabase
             .from("profiles_private")
             .select("phone_number, whatsapp_number")
-            .eq("profile_id", data.id)
+            .eq("profile_id", (data as any).id)
             .maybeSingle();
 
+          const d = data as any;
           const merged: ProfileWithContact = {
-            id: data.id,
-            user_id: data.user_id,
-            account_type: data.account_type as "professional" | "handyman",
-            full_name: data.full_name,
-            profession: (data as any).profession ?? null,
-            bio: (data as any).bio ?? null,
-            location: (data as any).location ?? null,
-            daily_rate: (data as any).daily_rate ?? null,
-            contract_rate: (data as any).contract_rate ?? null,
-            skills: (data as any).skills ?? [],
-            avatar_url: (data as any).avatar_url ?? null,
-            documents_uploaded: (data as any).documents_uploaded ?? false,
-            is_verified: (data as any).is_verified ?? null,
-            created_at: data.created_at,
-            updated_at: data.updated_at,
+            id: d.id,
+            user_id: d.user_id,
+            account_type: d.account_type as "professional" | "handyman",
+            full_name: d.full_name,
+            profession: d.profession ?? null,
+            bio: d.bio ?? null,
+            location: d.location ?? null,
+            daily_rate: d.daily_rate ?? null,
+            contract_rate: d.contract_rate ?? null,
+            skills: d.skills ?? [],
+            avatar_url: d.avatar_url ?? null,
+            documents_uploaded: d.documents_uploaded ?? false,
+            is_verified: d.is_verified ?? null,
+            created_at: d.created_at,
+            updated_at: d.updated_at,
             phone_number: privateData?.phone_number ?? null,
             whatsapp_number: privateData?.whatsapp_number ?? null,
           };

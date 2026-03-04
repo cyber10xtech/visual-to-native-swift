@@ -63,8 +63,8 @@ const CustomerSettings = () => {
                 {displayName}
               </h2>
               <p className="text-sm text-primary-foreground/80">{user?.email}</p>
-              {profile?.location && (
-                <p className="text-xs text-primary-foreground/60 mt-0.5">{profile.location}</p>
+              {profile?.city && (
+                <p className="text-xs text-primary-foreground/60 mt-0.5">{profile.city}</p>
               )}
             </div>
           </div>

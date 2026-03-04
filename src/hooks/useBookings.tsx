@@ -1,43 +1,38 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
-import { useCustomerProfile } from "./useCustomerProfile";
 import type { Profile } from "./useProfile";
-
-// Unified schema column mapping (old → new):
-//   pro_id       → professional_id
-//   booking_date → scheduled_date  (DATE type, not TIMESTAMPTZ)
-//   amount       → rate_amount
-//   + new required field: service_category ('professional' | 'handyman')
 
 export interface Booking {
   id: string;
-  customer_id: string; // customer_profiles.id
-  professional_id: string; // profiles.id
+  customer_id: string;
+  pro_id: string;
   service_type: string;
-  service_category: string;
   description: string | null;
-  scheduled_date: string | null; // DATE
-  scheduled_time: string | null; // TIME
+  booking_date: string | null;
   duration: string | null;
-  rate_amount: number | null;
-  rate_type: string | null;
+  amount: number;
   status: string;
-  notes: string | null;
   created_at: string;
-  updated_at: string;
-  professional?: Profile; // joined via select
+  professional?: Profile;
 }
 
 export const useBookings = () => {
   const { user } = useAuth();
-  const { profile } = useCustomerProfile();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
+
+  // Get profile id for current user
+  useEffect(() => {
+    if (!user) { setProfileId(null); return; }
+    supabase.from("profiles").select("id").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => setProfileId(data?.id ?? null));
+  }, [user]);
 
   const fetchBookings = async () => {
-    if (!profile?.id) {
+    if (!profileId) {
       setBookings([]);
       setLoading(false);
       return;
@@ -45,21 +40,18 @@ export const useBookings = () => {
 
     try {
       setLoading(true);
-      // Join professional profile data via the FK
       const { data, error } = await supabase
         .from("bookings")
-        .select(
-          `
+        .select(`
           *,
           professional:profiles!bookings_professional_id_fkey(
-            id, user_id, account_type, full_name, profession_specialty,
-            handyman_specialty, bio, location, daily_rate, contract_rate,
+            id, user_id, account_type, full_name, profession,
+            bio, location, daily_rate, contract_rate,
             skills, avatar_url, documents_uploaded, is_verified,
             created_at, updated_at
           )
-        `,
-        )
-        .eq("customer_id", profile.id)
+        `)
+        .eq("customer_id", profileId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -73,37 +65,29 @@ export const useBookings = () => {
 
   useEffect(() => {
     fetchBookings();
-  }, [profile?.id]);
+  }, [profileId]);
 
   const createBooking = async (bookingData: {
-    professional_id: string;
+    pro_id: string;
     service_type: string;
-    service_category: "professional" | "handyman"; // required by unified schema
     description?: string;
-    scheduled_date: string; // DATE string: "YYYY-MM-DD"
-    scheduled_time?: string; // TIME string: "HH:MM"
+    booking_date?: string;
     duration?: string;
-    rate_amount?: number;
-    rate_type?: "daily" | "hourly" | "project" | "contract";
-    notes?: string;
+    amount?: number;
   }) => {
-    if (!profile?.id) return { error: new Error("No customer profile") };
+    if (!profileId) return { error: new Error("No profile found") };
 
     try {
       const { data, error } = await supabase
         .from("bookings")
         .insert({
-          customer_id: profile.id,
-          professional_id: bookingData.professional_id,
+          customer_id: profileId,
+          pro_id: bookingData.pro_id,
           service_type: bookingData.service_type,
-          service_category: bookingData.service_category,
           description: bookingData.description ?? null,
-          scheduled_date: bookingData.scheduled_date,
-          scheduled_time: bookingData.scheduled_time ?? null,
+          booking_date: bookingData.booking_date ?? null,
           duration: bookingData.duration ?? null,
-          rate_amount: bookingData.rate_amount ?? null,
-          rate_type: bookingData.rate_type ?? null,
-          notes: bookingData.notes ?? null,
+          amount: bookingData.amount ?? 0,
           status: "pending",
         })
         .select()
@@ -120,7 +104,6 @@ export const useBookings = () => {
   const updateBookingStatus = async (bookingId: string, status: string) => {
     try {
       const { error } = await supabase.from("bookings").update({ status }).eq("id", bookingId);
-
       if (error) throw error;
       await fetchBookings();
       return { error: null };
