@@ -83,10 +83,13 @@ const CustomerRegister = () => {
       toast.success("Account created! Please check your email to verify your account.");
       navigate("/sign-in");
     } catch (error: any) {
-      if (error.message?.includes("already registered")) {
-        toast.error("Unable to create account. Please try a different email or sign in.");
+      const msg = error.message || "";
+      if (msg.includes("already registered") || msg.includes("already been registered") || error.status === 422) {
+        toast.error("This email is already registered. Please sign in instead.");
+      } else if (msg.includes("password") || msg.includes("weak")) {
+        toast.error("Password is too weak. Please use a stronger password.");
       } else {
-        toast.error("Registration failed. Please check your details and try again.");
+        toast.error("Registration failed: " + (msg || "Please check your details and try again."));
       }
     } finally {
       setIsLoading(false);
