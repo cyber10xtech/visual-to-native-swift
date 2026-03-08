@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MessageSquare, Loader2 } from "lucide-react";
+import { MessageSquare, Loader2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
+import { motion } from "framer-motion";
+import { formatDistanceToNow } from "date-fns";
 
 interface ConversationItem {
   id: string;
@@ -21,42 +26,63 @@ const CustomerMessages = () => {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (!user) return;
 
     const fetchConversations = async () => {
       try {
-        // Get profile id
         const { data: profileData } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
+          .from("profiles").select("id").eq("user_id", user.id).maybeSingle();
         if (!profileData) { setLoading(false); return; }
 
         const { data: convos, error } = await supabase
           .from("conversations")
-          .select(`
-            id, pro_id, created_at,
-            professional:profiles!conversations_professional_id_fkey(full_name, avatar_url)
-          `)
+          .select(`id, pro_id, created_at,
+            professional:profiles!conversations_professional_id_fkey(full_name, avatar_url)`)
           .eq("customer_id", profileData.id)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
 
-        const items: ConversationItem[] = (convos || []).map((c: any) => ({
-          id: c.id,
-          pro_id: c.pro_id,
-          created_at: c.created_at,
-          professional_name: c.professional?.full_name || "Professional",
-          professional_avatar: c.professional?.avatar_url || null,
-          last_message: null,
-          last_message_at: null,
-          unread_count: 0,
-        }));
+        // Fetch last message and unread count for each conversation
+        const items: ConversationItem[] = await Promise.all(
+          (convos || []).map(async (c: any) => {
+            const { data: lastMsg } = await supabase
+              .from("messages")
+              .select("content, created_at, sender_id, is_read")
+              .eq("conversation_id", c.id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const { count } = await supabase
+              .from("messages")
+              .select("id", { count: "exact", head: true })
+              .eq("conversation_id", c.id)
+              .neq("sender_id", profileData.id)
+              .eq("is_read", false);
+
+            return {
+              id: c.id,
+              pro_id: c.pro_id,
+              created_at: c.created_at,
+              professional_name: c.professional?.full_name || "Professional",
+              professional_avatar: c.professional?.avatar_url || null,
+              last_message: lastMsg?.content || null,
+              last_message_at: lastMsg?.created_at || null,
+              unread_count: count || 0,
+            };
+          })
+        );
+
+        // Sort by last message time
+        items.sort((a, b) => {
+          const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : new Date(a.created_at).getTime();
+          const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : new Date(b.created_at).getTime();
+          return bTime - aTime;
+        });
 
         setConversations(items);
       } catch (err) {
@@ -67,50 +93,86 @@ const CustomerMessages = () => {
     };
 
     fetchConversations();
+
+    // Realtime listener for new messages
+    const channel = supabase
+      .channel("messages-list")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
+        fetchConversations();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
+
+  const filtered = searchQuery
+    ? conversations.filter(c => c.professional_name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : conversations;
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="max-w-md mx-auto px-4 py-6">
-        <h1 className="text-xl font-bold text-foreground mb-4">Messages</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-1">Messages</h1>
+        <p className="text-sm text-muted-foreground mb-4">Chat with your professionals</p>
+
+        {conversations.length > 3 && (
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search conversations..." value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-10 h-10 bg-muted/50 border-0 rounded-xl" />
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : conversations.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-12">
             <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No messages yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Start a conversation by booking a professional
-            </p>
+            <p className="text-muted-foreground font-medium">No messages yet</p>
+            <p className="text-sm text-muted-foreground mt-1">Start a conversation by visiting a professional's profile</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {conversations.map((convo) => (
-              <button
-                key={convo.id}
-                onClick={() => navigate(`/chat/${convo.id}`)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:bg-muted/50 transition-colors text-left"
-              >
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  {convo.professional_avatar ? (
-                    <img src={convo.professional_avatar} alt="" className="w-10 h-10 rounded-full object-cover" />
-                  ) : (
-                    <span className="text-primary font-semibold text-sm">
-                      {convo.professional_name.charAt(0)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{convo.professional_name}</p>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {convo.last_message || "Start a conversation"}
-                  </p>
-                </div>
-              </button>
-            ))}
+          <div className="space-y-1">
+            {filtered.map((convo, i) => {
+              const initials = convo.professional_name.split(" ").map(n => n[0]).join("").toUpperCase();
+              return (
+                <motion.button key={convo.id} onClick={() => navigate(`/chat/${convo.id}`)}
+                  initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                  className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-muted/50 transition-colors text-left">
+                  <div className="relative">
+                    <Avatar className="w-12 h-12">
+                      {convo.professional_avatar ? (
+                        <AvatarImage src={convo.professional_avatar} alt="" />
+                      ) : null}
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
+                    </Avatar>
+                    {convo.unread_count > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                        {convo.unread_count > 9 ? "9+" : convo.unread_count}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className={`font-semibold text-foreground text-sm truncate ${convo.unread_count > 0 ? "text-foreground" : ""}`}>
+                        {convo.professional_name}
+                      </p>
+                      {convo.last_message_at && (
+                        <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-2">
+                          {formatDistanceToNow(new Date(convo.last_message_at), { addSuffix: false })}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-sm truncate ${convo.unread_count > 0 ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                      {convo.last_message || "Start a conversation"}
+                    </p>
+                  </div>
+                </motion.button>
+              );
+            })}
           </div>
         )}
       </div>
