@@ -149,3 +149,12 @@
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.12); }
 }
+
+/* Hide scrollbar for horizontal scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
