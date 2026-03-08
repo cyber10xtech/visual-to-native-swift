@@ -31,14 +31,21 @@ const EditProfile = () => {
     if (profile) {
       setFormData({
         fullName: profile.full_name || "",
-        email: profile.email || "",
+        email: profile.email || user?.email || "",
         address: profile.address || "",
         city: profile.city || "",
         zipCode: profile.zip_code || "",
       });
       setAvatarUrl(profile.avatar_url || "");
+    } else if (user && !profileLoading) {
+      // No profile yet — pre-fill from auth
+      setFormData(prev => ({
+        ...prev,
+        fullName: user.user_metadata?.full_name || "",
+        email: user.email || "",
+      }));
     }
-  }, [profile]);
+  }, [profile, user, profileLoading]);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
