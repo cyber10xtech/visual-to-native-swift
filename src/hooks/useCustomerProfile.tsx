@@ -55,15 +55,30 @@ export const useCustomerProfile = () => {
   const updateProfile = async (
     updates: Partial<Omit<CustomerProfile, "id" | "user_id" | "created_at" | "updated_at" | "email" | "referral_code">>,
   ) => {
-    if (!user || !profile) return { error: new Error("Not authenticated") };
+    if (!user) return { error: new Error("Not authenticated") };
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
+      if (profile) {
+        // Profile exists, update it
+        const { error } = await supabase
+          .from("profiles")
+          .update({ ...updates, updated_at: new Date().toISOString() })
+          .eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        // Profile missing (e.g. trigger didn't fire), create it
+        const { error } = await supabase
+          .from("profiles")
+          .insert({
+            user_id: user.id,
+            full_name: updates.full_name || user.user_metadata?.full_name || "User",
+            email: user.email,
+            account_type: "customer",
+            referral_code: "SAFE" + user.id.substring(0, 6).toUpperCase(),
+            ...updates,
+          });
+        if (error) throw error;
+      }
       await fetchProfile();
       return { error: null };
     } catch (err) {
