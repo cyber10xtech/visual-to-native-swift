@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "./useAuth";
 
 export interface AppNotification {
   id: string;
   user_id: string;
+  user_type: string;
   type: string;
   title: string;
-  description: string;
+  message: string;
+  data: any;
   is_read: boolean | null;
   created_at: string;
 }
@@ -30,14 +32,25 @@ export const useNotifications = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("notifications")
-        .select("id, user_id, type, title, description, is_read, created_at")
+        .select("*")
         .eq("user_id", user.id)
+        .eq("user_type", "customer")
         .order("created_at", { ascending: false })
         .limit(50);
 
       if (error) throw error;
 
-      const typedData = (data || []) as AppNotification[];
+      const typedData = (data || []).map((n: any) => ({
+        id: n.id,
+        user_id: n.user_id,
+        user_type: n.user_type ?? "customer",
+        type: n.type,
+        title: n.title,
+        message: n.message ?? n.description ?? "",
+        data: n.data ?? null,
+        is_read: n.is_read,
+        created_at: n.created_at,
+      }));
       setNotifications(typedData);
       setUnreadCount(typedData.filter((n) => !n.is_read).length);
     } catch (error) {
@@ -65,18 +78,36 @@ export const useNotifications = () => {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          const n = payload.new as AppNotification;
-          setNotifications((prev) => [n, ...prev]);
+          const n = payload.new as any;
+          const mapped: AppNotification = {
+            id: n.id,
+            user_id: n.user_id,
+            user_type: n.user_type ?? "customer",
+            type: n.type,
+            title: n.title,
+            message: n.message ?? n.description ?? "",
+            data: n.data ?? null,
+            is_read: n.is_read,
+            created_at: n.created_at,
+          };
+          setNotifications((prev) => [mapped, ...prev]);
           setUnreadCount((prev) => prev + 1);
 
+          // Browser notification
           if (typeof window !== "undefined" && "Notification" in window && window.Notification.permission === "granted") {
-            new window.Notification(n.title, { body: n.description, icon: "/pwa-192x192.png" });
+            new window.Notification(mapped.title, { body: mapped.message, icon: "/pwa-192x192.png" });
           }
+
+          // Sound + vibration
+          try { new Audio("/notification.mp3").play().catch(() => {}); } catch {}
+          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         },
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const markAsRead = async (notificationId: string) => {
@@ -111,16 +142,20 @@ export const useNotifications = () => {
 
 export const createNotification = async (
   userId: string,
+  userType: string,
   type: string,
   title: string,
-  description: string,
+  message: string,
+  data?: any,
 ) => {
   try {
     const { error } = await supabase.from("notifications").insert({
       user_id: userId,
+      user_type: userType,
       type,
       title,
-      description,
+      message,
+      data: data ?? null,
     });
     if (error) throw error;
     return { error: null };

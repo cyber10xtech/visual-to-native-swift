@@ -1,31 +1,31 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "./useAuth";
-import type { Profile } from "./useProfile";
 
 export interface Favorite {
   id: string;
   customer_id: string;
-  pro_id: string;
+  professional_id: string;
   created_at: string;
-  professional?: Profile;
+  professional?: {
+    id: string;
+    full_name: string;
+    profession: string | null;
+    location: string | null;
+    daily_rate: string | null;
+    avatar_url: string | null;
+    is_verified: boolean;
+  };
 }
 
 export const useFavorites = () => {
-  const { user } = useAuth();
+  const { customerProfileId } = useAuth();
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [profileId, setProfileId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user) { setProfileId(null); return; }
-    supabase.from("profiles").select("id").eq("user_id", user.id).maybeSingle()
-      .then(({ data }) => setProfileId(data?.id ?? null));
-  }, [user]);
 
   const fetchFavorites = async () => {
-    if (!profileId) {
+    if (!customerProfileId) {
       setFavorites([]);
       setLoading(false);
       return;
@@ -35,20 +35,35 @@ export const useFavorites = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("favorites")
-        .select(`
-          *,
-          professional:profiles!favorites_professional_id_fkey(
-            id, user_id, account_type, full_name, profession,
-            bio, location, daily_rate, contract_rate,
-            skills, avatar_url, documents_uploaded, is_verified,
-            created_at, updated_at
-          )
-        `)
-        .eq("customer_id", profileId)
+        .select("*")
+        .eq("customer_id", customerProfileId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setFavorites((data as unknown as Favorite[]) || []);
+
+      // Fetch professional info from profiles_public
+      const favsWithPro: Favorite[] = await Promise.all(
+        (data || []).map(async (f: any) => {
+          const proId = f.professional_id || f.pro_id;
+          const { data: pro } = await supabase
+            .from("profiles_public")
+            .select("id, full_name, profession, location, daily_rate, avatar_url, is_verified")
+            .eq("id", proId)
+            .maybeSingle();
+
+          return {
+            id: f.id,
+            customer_id: f.customer_id,
+            professional_id: proId,
+            created_at: f.created_at,
+            professional: pro
+              ? { ...pro, is_verified: pro.is_verified ?? false }
+              : undefined,
+          };
+        })
+      );
+
+      setFavorites(favsWithPro);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -58,15 +73,15 @@ export const useFavorites = () => {
 
   useEffect(() => {
     fetchFavorites();
-  }, [profileId]);
+  }, [customerProfileId]);
 
   const addFavorite = async (professionalId: string) => {
-    if (!profileId) return { error: new Error("No profile found") };
+    if (!customerProfileId) return { error: new Error("No profile found") };
 
     try {
       const { error } = await supabase.from("favorites").insert({
-        customer_id: profileId,
-        pro_id: professionalId,
+        customer_id: customerProfileId,
+        professional_id: professionalId,
       });
 
       if (error) throw error;
@@ -78,14 +93,14 @@ export const useFavorites = () => {
   };
 
   const removeFavorite = async (professionalId: string) => {
-    if (!profileId) return { error: new Error("No profile found") };
+    if (!customerProfileId) return { error: new Error("No profile found") };
 
     try {
       const { error } = await supabase
         .from("favorites")
         .delete()
-        .eq("customer_id", profileId)
-        .eq("pro_id", professionalId);
+        .eq("customer_id", customerProfileId)
+        .eq("professional_id", professionalId);
 
       if (error) throw error;
       await fetchFavorites();
@@ -96,7 +111,7 @@ export const useFavorites = () => {
   };
 
   const isFavorite = (professionalId: string) => {
-    return favorites.some((f) => f.pro_id === professionalId);
+    return favorites.some((f) => f.professional_id === professionalId);
   };
 
   return { favorites, loading, error, addFavorite, removeFavorite, isFavorite, refetch: fetchFavorites };

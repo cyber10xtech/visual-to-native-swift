@@ -1,38 +1,38 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "./useAuth";
-import type { Profile } from "./useProfile";
 
 export interface Booking {
   id: string;
   customer_id: string;
-  pro_id: string;
+  professional_id: string;
   service_type: string;
   description: string | null;
-  booking_date: string | null;
-  duration: string | null;
-  amount: number;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  rate_type: string | null;
+  rate_amount: number;
   status: string;
+  notes: string | null;
   created_at: string;
-  professional?: Profile;
+  professional?: {
+    id: string;
+    full_name: string;
+    profession: string | null;
+    avatar_url: string | null;
+    location: string | null;
+    user_id: string | null;
+  };
 }
 
 export const useBookings = () => {
-  const { user } = useAuth();
+  const { customerProfileId } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  const [profileId, setProfileId] = useState<string | null>(null);
-
-  // Get profile id for current user
-  useEffect(() => {
-    if (!user) { setProfileId(null); return; }
-    supabase.from("profiles").select("id").eq("user_id", user.id).maybeSingle()
-      .then(({ data }) => setProfileId(data?.id ?? null));
-  }, [user]);
 
   const fetchBookings = async () => {
-    if (!profileId) {
+    if (!customerProfileId) {
       setBookings([]);
       setLoading(false);
       return;
@@ -42,20 +42,49 @@ export const useBookings = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("bookings")
-        .select(`
-          *,
-          professional:profiles!bookings_professional_id_fkey(
-            id, user_id, account_type, full_name, profession,
-            bio, location, daily_rate, contract_rate,
-            skills, avatar_url, documents_uploaded, is_verified,
-            created_at, updated_at
-          )
-        `)
-        .eq("customer_id", profileId)
+        .select("*")
+        .eq("customer_id", customerProfileId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setBookings((data as unknown as Booking[]) || []);
+
+      // Fetch professional info for each booking from profiles_public
+      const bookingsWithPro: Booking[] = await Promise.all(
+        (data || []).map(async (b: any) => {
+          const { data: pro } = await supabase
+            .from("profiles_public")
+            .select("id, full_name, profession, avatar_url, location, user_id")
+            .eq("id", b.professional_id)
+            .maybeSingle();
+
+          return {
+            id: b.id,
+            customer_id: b.customer_id,
+            professional_id: b.professional_id,
+            service_type: b.service_type,
+            description: b.description ?? null,
+            scheduled_date: b.scheduled_date ?? null,
+            scheduled_time: b.scheduled_time ?? null,
+            rate_type: b.rate_type ?? null,
+            rate_amount: b.rate_amount ?? b.amount ?? 0,
+            status: b.status,
+            notes: b.notes ?? null,
+            created_at: b.created_at,
+            professional: pro
+              ? {
+                  id: pro.id,
+                  full_name: pro.full_name,
+                  profession: pro.profession,
+                  avatar_url: pro.avatar_url,
+                  location: pro.location,
+                  user_id: pro.user_id,
+                }
+              : undefined,
+          };
+        })
+      );
+
+      setBookings(bookingsWithPro);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -65,29 +94,58 @@ export const useBookings = () => {
 
   useEffect(() => {
     fetchBookings();
-  }, [profileId]);
+  }, [customerProfileId]);
+
+  // Realtime subscription for booking status changes
+  useEffect(() => {
+    if (!customerProfileId) return;
+
+    const channel = supabase
+      .channel("bookings-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "bookings",
+          filter: `customer_id=eq.${customerProfileId}`,
+        },
+        () => {
+          fetchBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [customerProfileId]);
 
   const createBooking = async (bookingData: {
-    pro_id: string;
+    professional_id: string;
     service_type: string;
     description?: string;
-    booking_date?: string;
-    duration?: string;
-    amount?: number;
+    scheduled_date?: string;
+    scheduled_time?: string;
+    rate_type?: string;
+    rate_amount?: number;
+    notes?: string;
   }) => {
-    if (!profileId) return { error: new Error("No profile found") };
+    if (!customerProfileId) return { error: new Error("No customer profile found"), data: null };
 
     try {
       const { data, error } = await supabase
         .from("bookings")
         .insert({
-          customer_id: profileId,
-          pro_id: bookingData.pro_id,
+          customer_id: customerProfileId,
+          professional_id: bookingData.professional_id,
           service_type: bookingData.service_type,
           description: bookingData.description ?? null,
-          booking_date: bookingData.booking_date ?? null,
-          duration: bookingData.duration ?? null,
-          amount: bookingData.amount ?? 0,
+          scheduled_date: bookingData.scheduled_date ?? null,
+          scheduled_time: bookingData.scheduled_time ?? null,
+          rate_type: bookingData.rate_type ?? null,
+          rate_amount: bookingData.rate_amount ?? 0,
+          notes: bookingData.notes ?? null,
           status: "pending",
         })
         .select()

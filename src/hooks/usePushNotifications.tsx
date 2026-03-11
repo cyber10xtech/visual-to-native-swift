@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
 
@@ -21,18 +21,12 @@ export const usePushNotifications = (userType: 'customer' | 'professional' = 'cu
     loading: true,
   });
 
-  // Check if push notifications are supported
   useEffect(() => {
     const checkSupport = async () => {
       const isSupported = 'serviceWorker' in navigator && 'PushManager' in window;
       const permission = isSupported ? Notification.permission : null;
 
-      setState(prev => ({
-        ...prev,
-        isSupported,
-        permission,
-        loading: false,
-      }));
+      setState(prev => ({ ...prev, isSupported, permission, loading: false }));
 
       if (isSupported && user) {
         await checkSubscription();
@@ -44,34 +38,13 @@ export const usePushNotifications = (userType: 'customer' | 'professional' = 'cu
 
   const checkSubscription = async () => {
     if (!user) return;
-
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await (registration as any).pushManager.getSubscription();
-      
-      setState(prev => ({
-        ...prev,
-        isSubscribed: !!subscription,
-      }));
+      setState(prev => ({ ...prev, isSubscribed: !!subscription }));
     } catch (error) {
-      if (isDevelopment) {
-        console.error('Error checking subscription:', error);
-      }
+      if (isDevelopment) console.error('Error checking subscription:', error);
     }
-  };
-
-  const registerServiceWorker = async () => {
-    if (!('serviceWorker' in navigator)) {
-      throw new Error('Service workers not supported');
-    }
-
-    const registration = await navigator.serviceWorker.register('/sw.js', {
-      scope: '/',
-    });
-
-    // Wait for the service worker to be ready
-    await navigator.serviceWorker.ready;
-    return registration;
   };
 
   const subscribe = useCallback(async () => {
@@ -83,7 +56,6 @@ export const usePushNotifications = (userType: 'customer' | 'professional' = 'cu
     setState(prev => ({ ...prev, loading: true }));
 
     try {
-      // Request permission
       const permission = await Notification.requestPermission();
       setState(prev => ({ ...prev, permission }));
 
@@ -92,52 +64,26 @@ export const usePushNotifications = (userType: 'customer' | 'professional' = 'cu
         return { error: new Error('Permission denied') };
       }
 
-      // Register service worker
-      const registration = await registerServiceWorker();
+      await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
 
-      // Get VAPID public key from environment
-      const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-      
-      if (!vapidPublicKey) {
-        // If no VAPID key, still save a placeholder subscription for in-app notifications
-        console.warn('VAPID key not configured, using in-app notifications only');
-        toast.success('Notifications enabled (in-app only)');
-        setState(prev => ({ ...prev, isSubscribed: true, loading: false }));
-        return { error: null };
-      }
-
-      // Subscribe to push
-      const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-      const subscription = await (registration as any).pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
-      });
-
-      const subscriptionJson = subscription.toJSON();
-
-      // Save subscription to database
-      const { error: dbError } = await supabase
+      // Save placeholder subscription for in-app notifications
+      await supabase
         .from('push_subscriptions')
         .upsert({
           user_id: user.id,
           user_type: userType,
-          endpoint: subscriptionJson.endpoint!,
-          p256dh: subscriptionJson.keys!.p256dh,
-          auth: subscriptionJson.keys!.auth,
-        }, {
-          onConflict: 'user_id,endpoint',
-        });
+          endpoint: 'web-push-' + user.id,
+          p256dh: 'na',
+          auth: 'na',
+        }, { onConflict: 'user_id,endpoint' });
 
-      if (dbError) throw dbError;
-
-      setState(prev => ({ ...prev, isSubscribed: true }));
-      toast.success('Push notifications enabled!');
+      setState(prev => ({ ...prev, isSubscribed: true, loading: false }));
+      toast.success('Notifications enabled!');
       return { error: null };
     } catch (error) {
-      if (isDevelopment) {
-        console.error('Error subscribing to push:', error);
-      }
-      toast.error('Failed to enable push notifications');
+      if (isDevelopment) console.error('Error subscribing:', error);
+      toast.error('Failed to enable notifications');
       return { error: error as Error };
     } finally {
       setState(prev => ({ ...prev, loading: false }));
@@ -155,8 +101,6 @@ export const usePushNotifications = (userType: 'customer' | 'professional' = 'cu
 
       if (subscription) {
         await subscription.unsubscribe();
-
-        // Remove from database
         await supabase
           .from('push_subscriptions')
           .delete()
@@ -165,38 +109,16 @@ export const usePushNotifications = (userType: 'customer' | 'professional' = 'cu
       }
 
       setState(prev => ({ ...prev, isSubscribed: false }));
-      toast.success('Push notifications disabled');
+      toast.success('Notifications disabled');
       return { error: null };
     } catch (error) {
-      if (isDevelopment) {
-        console.error('Error unsubscribing:', error);
-      }
-      toast.error('Failed to disable push notifications');
+      if (isDevelopment) console.error('Error unsubscribing:', error);
+      toast.error('Failed to disable notifications');
       return { error: error as Error };
     } finally {
       setState(prev => ({ ...prev, loading: false }));
     }
   }, [user]);
 
-  return {
-    ...state,
-    subscribe,
-    unsubscribe,
-  };
+  return { ...state, subscribe, unsubscribe };
 };
-
-// Helper function to convert VAPID key
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
