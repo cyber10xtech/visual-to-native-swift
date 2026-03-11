@@ -44,7 +44,7 @@ const CustomerSignIn = () => {
     }
 
     toast.success("Welcome back!");
-    navigate("/home");
+    // Navigation handled by auth state change in useAuth
   };
 
   return (
