@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Heart, AlertCircle, Clock, AlertTriangle, Loader2 } from "lucide-react";
+import { Calendar, Heart, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 import ProfessionalCard from "@/components/customer/ProfessionalCard";
@@ -28,7 +28,7 @@ const CustomerHub = () => {
   const [activeHubTab, setActiveHubTab] = useState<HubTab>(initialTab);
 
   const { professionals, loading: professionalsLoading } = useProfessionals();
-  const { favorites, loading: favoritesLoading, removeFavorite, isFavorite } = useFavorites();
+  const { favorites, loading: favoritesLoading, removeFavorite } = useFavorites();
   const { bookings, loading: bookingsLoading } = useBookings();
 
   const emergencySpecialties = ["plumber", "electrician", "ac installer"];
@@ -77,8 +77,10 @@ const CustomerHub = () => {
             ) : (
               <div className="space-y-3">
                 {bookings.map((booking, index) => {
-                  const dateDisplay = booking.booking_date ? new Date(booking.booking_date).toLocaleDateString("en-NG") : "TBD";
-                  const timeDisplay = booking.booking_date ? new Date(booking.booking_date).toLocaleTimeString("en-NG", { hour: '2-digit', minute: '2-digit' }) : "TBD";
+                  const dateDisplay = booking.scheduled_date
+                    ? new Date(booking.scheduled_date).toLocaleDateString("en-NG")
+                    : "TBD";
+                  const timeDisplay = booking.scheduled_time || "TBD";
                   return (
                     <motion.div key={booking.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}>
@@ -88,7 +90,7 @@ const CustomerHub = () => {
                         profession={booking.professional?.profession || ""}
                         date={dateDisplay} time={timeDisplay}
                         location={booking.professional?.location || ""}
-                        price={booking.amount ?? 0}
+                        price={booking.rate_amount ?? 0}
                         status={mapBookingStatus(booking.status)} />
                     </motion.div>
                   );
@@ -112,15 +114,15 @@ const CustomerHub = () => {
             ) : (
               <div className="space-y-3">
                 {favorites.map((fav) => (
-                  <ProfessionalCard key={fav.id} id={fav.pro_id}
+                  <ProfessionalCard key={fav.id} id={fav.professional_id}
                     name={fav.professional?.full_name || "Professional"}
                     profession={fav.professional?.profession || "Professional"}
                     location={fav.professional?.location || "Nigeria"}
                     lastActive="Recently" rating={4.8} reviewCount={0} distance=""
                     dailyRate={fav.professional?.daily_rate ? parseInt(fav.professional.daily_rate) : 0}
                     variant="favorite" isFavorite={true}
-                    onBook={() => navigate(`/professional/${fav.pro_id}`)}
-                    onFavoriteToggle={() => removeFavorite(fav.pro_id)} />
+                    onBook={() => navigate(`/professional/${fav.professional_id}`)}
+                    onFavoriteToggle={() => removeFavorite(fav.professional_id)} />
                 ))}
               </div>
             )}

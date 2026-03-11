@@ -8,9 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useNavigate } from "react-router-dom";
 import { useCustomerProfile } from "@/hooks/useCustomerProfile";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { profileSchema, NIGERIAN_CITIES } from "@/lib/validation";
+import { NIGERIAN_CITIES } from "@/lib/validation";
 import { motion } from "framer-motion";
 
 const EditProfile = () => {
@@ -26,9 +26,8 @@ const EditProfile = () => {
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
-    address: "",
+    phone: "",
     city: "",
-    zipCode: "",
   });
 
   useEffect(() => {
@@ -36,9 +35,8 @@ const EditProfile = () => {
       setFormData({
         fullName: profile.full_name || "",
         email: profile.email || user?.email || "",
-        address: profile.address || "",
+        phone: profile.phone || "",
         city: profile.city || "",
-        zipCode: profile.zip_code || "",
       });
       setAvatarUrl(profile.avatar_url || "");
     } else if (user && !profileLoading) {
@@ -78,20 +76,16 @@ const EditProfile = () => {
 
   const handleSave = async () => {
     setErrors({});
-    const result = profileSchema.safeParse(formData);
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach(i => { fieldErrors[i.path[0] as string] = i.message; });
-      setErrors(fieldErrors);
+    if (!formData.fullName.trim()) {
+      setErrors({ fullName: "Name is required" });
       return;
     }
 
     setSaving(true);
     const { error } = await updateProfile({
       full_name: formData.fullName.trim(),
-      address: formData.address.trim(),
-      city: formData.city,
-      zip_code: formData.zipCode.trim(),
+      phone: formData.phone.trim() || null,
+      city: formData.city || null,
       avatar_url: avatarUrl || null,
     });
     setSaving(false);
@@ -158,9 +152,9 @@ const EditProfile = () => {
           </div>
 
           <div className="space-y-2">
-            <Label>Address</Label>
-            <Input value={formData.address} onChange={(e) => handleChange("address", e.target.value)}
-              placeholder="Enter your address" className="h-12 rounded-xl" />
+            <Label>Phone</Label>
+            <Input value={formData.phone} onChange={(e) => handleChange("phone", e.target.value)}
+              placeholder="+234 800 000 0000" className="h-12 rounded-xl" />
           </div>
 
           <div className="space-y-2">
@@ -173,12 +167,6 @@ const EditProfile = () => {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>ZIP Code</Label>
-            <Input value={formData.zipCode} onChange={(e) => handleChange("zipCode", e.target.value)}
-              placeholder="e.g., 100001" className="h-12 rounded-xl" maxLength={20} />
           </div>
         </div>
 

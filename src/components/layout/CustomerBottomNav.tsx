@@ -2,29 +2,40 @@ import { useState, useEffect } from "react";
 import { Home, Building2, MessageSquare, Bell, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNotifications } from "@/hooks/useNotifications";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 
 const CustomerBottomNav = () => {
   const { unreadCount } = useNotifications();
-  const { user } = useAuth();
+  const { customerProfileId } = useAuth();
   const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
-    if (!user) return;
+    if (!customerProfileId) return;
 
     const fetchUnreadMessages = async () => {
-      const { data: profile } = await supabase
-        .from("profiles").select("id").eq("user_id", user.id).maybeSingle();
-      if (!profile) return;
+      // Count unread messages from professionals across all conversations
+      const { data: convos } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("customer_id", customerProfileId);
 
-      const { count } = await supabase
-        .from("messages")
-        .select("id", { count: "exact", head: true })
-        .neq("sender_id", profile.id)
-        .eq("is_read", false);
+      if (!convos || convos.length === 0) { setUnreadMessages(0); return; }
 
-      setUnreadMessages(count || 0);
+      const convoIds = convos.map(c => c.id);
+      
+      let total = 0;
+      for (const cid of convoIds) {
+        const { count } = await supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("conversation_id", cid)
+          .eq("sender_type", "professional")
+          .is("read_at", null);
+        total += count || 0;
+      }
+      
+      setUnreadMessages(total);
     };
 
     fetchUnreadMessages();
@@ -37,7 +48,7 @@ const CustomerBottomNav = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [customerProfileId]);
 
   const navItems = [
     { icon: Home, label: "Home", path: "/home" },
