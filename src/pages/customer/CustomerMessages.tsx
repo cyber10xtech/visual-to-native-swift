@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { MessageSquare, Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import CustomerBottomNav from "@/components/layout/CustomerBottomNav";
 import { motion } from "framer-motion";
@@ -12,7 +11,7 @@ import { formatDistanceToNow } from "date-fns";
 
 interface ConversationItem {
   id: string;
-  pro_id: string;
+  professional_id: string;
   created_at: string;
   professional_name: string;
   professional_avatar: string | null;
@@ -23,55 +22,58 @@ interface ConversationItem {
 
 const CustomerMessages = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { customerProfileId } = useAuth();
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    if (!user) return;
+    if (!customerProfileId) return;
 
     const fetchConversations = async () => {
       try {
-        const { data: profileData } = await supabase
-          .from("profiles").select("id").eq("user_id", user.id).maybeSingle();
-        if (!profileData) { setLoading(false); return; }
-
         const { data: convos, error } = await supabase
           .from("conversations")
-          .select(`id, pro_id, created_at,
-            professional:profiles!conversations_professional_id_fkey(full_name, avatar_url)`)
-          .eq("customer_id", profileData.id)
-          .order("created_at", { ascending: false });
+          .select("id, professional_id, created_at, last_message_at")
+          .eq("customer_id", customerProfileId)
+          .order("last_message_at", { ascending: false, nullsFirst: false });
 
         if (error) throw error;
 
-        // Fetch last message and unread count for each conversation
         const items: ConversationItem[] = await Promise.all(
           (convos || []).map(async (c: any) => {
+            // Get professional info from profiles_public
+            const { data: pro } = await supabase
+              .from("profiles_public")
+              .select("full_name, avatar_url")
+              .eq("id", c.professional_id)
+              .maybeSingle();
+
+            // Get last message
             const { data: lastMsg } = await supabase
               .from("messages")
-              .select("content, created_at, sender_id, is_read")
+              .select("content, created_at, sender_type")
               .eq("conversation_id", c.id)
               .order("created_at", { ascending: false })
               .limit(1)
               .maybeSingle();
 
+            // Count unread messages from professional
             const { count } = await supabase
               .from("messages")
               .select("id", { count: "exact", head: true })
               .eq("conversation_id", c.id)
-              .neq("sender_id", profileData.id)
-              .eq("is_read", false);
+              .eq("sender_type", "professional")
+              .is("read_at", null);
 
             return {
               id: c.id,
-              pro_id: c.pro_id,
+              professional_id: c.professional_id,
               created_at: c.created_at,
-              professional_name: c.professional?.full_name || "Professional",
-              professional_avatar: c.professional?.avatar_url || null,
+              professional_name: pro?.full_name || "Professional",
+              professional_avatar: pro?.avatar_url || null,
               last_message: lastMsg?.content || null,
-              last_message_at: lastMsg?.created_at || null,
+              last_message_at: lastMsg?.created_at || c.last_message_at || null,
               unread_count: count || 0,
             };
           })
@@ -103,7 +105,7 @@ const CustomerMessages = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [customerProfileId]);
 
   const filtered = searchQuery
     ? conversations.filter(c => c.professional_name.toLowerCase().includes(searchQuery.toLowerCase()))

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfile } from "@/hooks/useProfile";
 import { useFavorites } from "@/hooks/useFavorites";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -15,7 +15,6 @@ interface Review {
   rating: number;
   comment: string | null;
   created_at: string;
-  customer_name?: string;
 }
 
 const ProfessionalProfile = () => {
@@ -25,12 +24,15 @@ const ProfessionalProfile = () => {
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [avgRating, setAvgRating] = useState(0);
+  const [proStats, setProStats] = useState<{ jobs: number; rating: number; views: number } | null>(null);
 
   useEffect(() => {
     if (!id) return;
+
+    // Fetch reviews
     supabase.from("reviews")
-      .select("id, rating, comment, created_at, customer_id")
-      .eq("pro_id", id)
+      .select("id, rating, comment, created_at")
+      .eq("professional_id", id)
       .order("created_at", { ascending: false })
       .limit(10)
       .then(({ data }) => {
@@ -40,6 +42,15 @@ const ProfessionalProfile = () => {
             setAvgRating(data.reduce((sum: number, r: any) => sum + r.rating, 0) / data.length);
           }
         }
+      });
+
+    // Fetch pro stats
+    supabase.from("pro_stats")
+      .select("jobs, rating, views")
+      .eq("pro_id", id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setProStats(data as any);
       });
   }, [id]);
 
@@ -90,11 +101,11 @@ const ProfessionalProfile = () => {
   }
 
   const initials = profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase();
-  const rating = avgRating > 0 ? avgRating.toFixed(1) : "4.8";
+  const rating = proStats?.rating ?? (avgRating > 0 ? avgRating : 0);
+  const ratingDisplay = rating > 0 ? rating.toFixed(1) : "New";
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <div className="bg-card border-b border-border px-4 py-3 flex items-center justify-between">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
           <ArrowLeft className="w-5 h-5" />
@@ -109,7 +120,6 @@ const ProfessionalProfile = () => {
       </div>
 
       <div className="max-w-md mx-auto px-4 py-6">
-        {/* Profile Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center mb-6">
           <Avatar className="w-28 h-28 mb-4 ring-4 ring-primary/20">
@@ -129,7 +139,7 @@ const ProfessionalProfile = () => {
           <div className="flex items-center gap-2 mt-2">
             <div className="flex items-center gap-1">
               <Star className="w-4 h-4 fill-warning text-warning" />
-              <span className="font-semibold">{rating}</span>
+              <span className="font-semibold">{ratingDisplay}</span>
               <span className="text-sm text-muted-foreground">({reviews.length} reviews)</span>
             </div>
           </div>
@@ -139,11 +149,11 @@ const ProfessionalProfile = () => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="grid grid-cols-3 gap-3 mb-6">
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-lg font-bold text-primary">{reviews.length}</p>
-            <p className="text-xs text-muted-foreground">Reviews</p>
+            <p className="text-lg font-bold text-primary">{proStats?.jobs ?? reviews.length}</p>
+            <p className="text-xs text-muted-foreground">Jobs</p>
           </div>
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
-            <p className="text-lg font-bold text-primary">{rating}</p>
+            <p className="text-lg font-bold text-primary">{ratingDisplay}</p>
             <p className="text-xs text-muted-foreground">Rating</p>
           </div>
           <div className="bg-card border border-border rounded-2xl p-3 text-center">
@@ -152,7 +162,6 @@ const ProfessionalProfile = () => {
           </div>
         </motion.div>
 
-        {/* About */}
         {profile.bio && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="mb-6">
             <h2 className="font-bold text-foreground mb-2">About</h2>
@@ -160,7 +169,6 @@ const ProfessionalProfile = () => {
           </motion.div>
         )}
 
-        {/* Skills */}
         {profile.skills && profile.skills.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="mb-6">
             <h2 className="font-bold text-foreground mb-2">Skills</h2>
@@ -172,7 +180,6 @@ const ProfessionalProfile = () => {
           </motion.div>
         )}
 
-        {/* Rates */}
         {(profile.daily_rate || profile.contract_rate) && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="mb-6">
             <h2 className="font-bold text-foreground mb-2">Rates</h2>
@@ -193,7 +200,6 @@ const ProfessionalProfile = () => {
           </motion.div>
         )}
 
-        {/* Reviews */}
         {reviews.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mb-6">
             <h2 className="font-bold text-foreground mb-2">Reviews</h2>
@@ -215,7 +221,6 @@ const ProfessionalProfile = () => {
           </motion.div>
         )}
 
-        {/* Action Buttons */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
           className="flex gap-3 sticky bottom-4">
           <Button className="flex-1 h-12 gap-2 rounded-xl gradient-primary border-0 text-white hover:opacity-90"

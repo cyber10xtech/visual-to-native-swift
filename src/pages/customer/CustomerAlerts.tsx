@@ -20,7 +20,10 @@ const getIconForType = (type: string) => {
 const getNavigationPath = (notification: AppNotification): string | null => {
   switch (notification.type) {
     case "booking": return "/hub?tab=bookings";
-    case "message": return "/messages";
+    case "message":
+      return notification.data?.conversation_id
+        ? `/chat/${notification.data.conversation_id}`
+        : "/messages";
     case "review": return "/hub?tab=bookings";
     default: return null;
   }
@@ -92,7 +95,7 @@ const CustomerAlerts = () => {
                           <h3 className={`font-semibold text-foreground text-sm ${!notification.is_read ? "" : "font-medium"}`}>{notification.title}</h3>
                           {!notification.is_read && <span className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-2" />}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{notification.description}</p>
+                        <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{notification.message}</p>
                         <span className="text-xs text-muted-foreground/70 mt-1 block">
                           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                         </span>

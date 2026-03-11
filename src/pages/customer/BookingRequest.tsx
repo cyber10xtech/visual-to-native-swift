@@ -72,15 +72,12 @@ const BookingRequest = () => {
 
     setIsLoading(true);
 
-    const bookingDate = formData.scheduledTime
-      ? `${formData.scheduledDate}T${formData.scheduledTime}:00`
-      : `${formData.scheduledDate}T00:00:00`;
-
     const { error } = await createBooking({
-      pro_id: professionalId,
+      professional_id: professionalId,
       service_type: formData.serviceType.trim(),
       description: formData.description.trim() || undefined,
-      booking_date: bookingDate,
+      scheduled_date: formData.scheduledDate,
+      scheduled_time: formData.scheduledTime || undefined,
     });
 
     setIsLoading(false);
@@ -90,12 +87,13 @@ const BookingRequest = () => {
       return;
     }
 
-    // Notify professional
+    // Notify the professional
     if (professional?.user_id) {
       await createNotification(
         professional.user_id,
+        "professional",
         "booking",
-        "New Booking Request",
+        "New Booking Request 📅",
         `${user?.user_metadata?.full_name || "A customer"} requested ${formData.serviceType} on ${formData.scheduledDate}`,
       );
     }
@@ -116,7 +114,6 @@ const BookingRequest = () => {
       </div>
 
       <div className="max-w-md mx-auto px-4 py-6">
-        {/* Professional Info Card */}
         {professional && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             className="bg-primary/5 rounded-2xl p-4 mb-6 flex items-center gap-3 border border-primary/10">

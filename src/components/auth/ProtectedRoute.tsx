@@ -9,9 +9,8 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  const { user, loading, hasCustomerProfile } = useAuth();
   const location = useLocation();
-  // This triggers permission requests on first launch
   usePermissions();
 
   if (loading) {
@@ -24,6 +23,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   if (!user) {
     return <Navigate to="/sign-in" state={{ from: location }} replace />;
+  }
+
+  // If user is authenticated but has no customer_profiles row, redirect to complete-account
+  if (hasCustomerProfile === false && location.pathname !== "/complete-account") {
+    return <Navigate to="/complete-account" replace />;
   }
 
   return <>{children}</>;
