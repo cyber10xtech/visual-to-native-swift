@@ -11,6 +11,7 @@ import CustomerSignIn from "./pages/customer/CustomerSignIn";
 import CustomerRegister from "./pages/customer/CustomerRegister";
 import ForgotPassword from "./pages/customer/ForgotPassword";
 import ResetPassword from "./pages/customer/ResetPassword";
+import CompleteAccount from "./pages/customer/CompleteAccount";
 import CustomerHome from "./pages/customer/CustomerHome";
 import CustomerHub from "./pages/customer/CustomerHub";
 import CustomerMessages from "./pages/customer/CustomerMessages";
@@ -40,14 +41,16 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Root redirects to customer home */}
             <Route path="/" element={<Navigate to="/home" replace />} />
-            
-            {/* Customer App Routes - simplified paths */}
+
+            {/* Public auth routes */}
             <Route path="/sign-in" element={<CustomerSignIn />} />
             <Route path="/register" element={<CustomerRegister />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/complete-account" element={<CompleteAccount />} />
+
+            {/* Protected routes */}
             <Route path="/home" element={<ProtectedRoute><CustomerHome /></ProtectedRoute>} />
             <Route path="/hub" element={<ProtectedRoute><CustomerHub /></ProtectedRoute>} />
             <Route path="/messages" element={<ProtectedRoute><CustomerMessages /></ProtectedRoute>} />
@@ -65,11 +68,10 @@ const App = () => (
             <Route path="/invite" element={<ProtectedRoute><InviteFriends /></ProtectedRoute>} />
             <Route path="/terms" element={<TermsPrivacy />} />
             <Route path="/install" element={<CustomerInstall />} />
-            
-            {/* Legacy /customer/* routes redirect to new paths */}
+
+            {/* Legacy redirects */}
             <Route path="/customer/*" element={<Navigate to="/home" replace />} />
-            
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
