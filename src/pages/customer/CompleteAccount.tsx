@@ -36,14 +36,19 @@ const CompleteAccount = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("customer_profiles").insert({
-        user_id: user.id,
-        full_name: formData.fullName.trim(),
-        email: user.email,
-        phone: formData.phone.trim() || null,
-        city: formData.city || null,
-        referral_code: "SS" + Math.random().toString(36).substring(2, 8).toUpperCase(),
-      });
+      const { error } = await supabase
+        .from("customer_profiles")
+        .upsert(
+          {
+            user_id: user.id,
+            full_name: formData.fullName.trim(),
+            email: user.email,
+            phone: formData.phone.trim() || null,
+            city: formData.city || null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
 
       if (error) throw error;
 
@@ -51,7 +56,7 @@ const CompleteAccount = () => {
       toast.success("Profile completed!");
       navigate("/home", { replace: true });
     } catch (err: any) {
-      toast.error("Failed to create profile: " + (err.message || "Please try again."));
+      toast.error("Failed to save profile: " + (err.message || "Please try again."));
     } finally {
       setLoading(false);
     }
