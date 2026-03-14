@@ -7,14 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Loader2, AlertCircle } from "lucide-react";
-import { NIGERIAN_CITIES } from "@/lib/validation";
+import { Loader2, AlertCircle, ArrowLeft, LogOut } from "lucide-react";
+import { NIGERIAN_STATES } from "@/lib/validation";
 import { motion } from "framer-motion";
 import logo from "@/assets/logo.png";
 
 const CompleteAccount = () => {
   const navigate = useNavigate();
-  const { user, refreshCustomerProfile } = useAuth();
+  const { user, refreshCustomerProfile, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: user?.user_metadata?.full_name || "",
@@ -71,6 +71,15 @@ const CompleteAccount = () => {
         className="w-full max-w-md bg-card rounded-3xl shadow-2xl overflow-hidden"
       >
         <div className="p-8">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-sm">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            <button onClick={async () => { await signOut(); navigate("/sign-in", { replace: true }); }}
+              className="flex items-center gap-1 text-muted-foreground hover:text-destructive text-sm">
+              <LogOut className="w-4 h-4" /> Sign Out
+            </button>
+          </div>
           <div className="flex flex-col items-center mb-6">
             <img src={logo} alt="Safesight" className="w-16 h-16 rounded-2xl mb-4 object-contain shadow-lg" />
             <div className="flex items-center gap-2 mb-2">
@@ -108,14 +117,14 @@ const CompleteAccount = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
+              <Label htmlFor="city">State</Label>
               <Select value={formData.city} onValueChange={(v) => handleChange("city", v)}>
                 <SelectTrigger className="h-12 rounded-xl">
-                  <SelectValue placeholder="Select your city" />
+                  <SelectValue placeholder="Select your state" />
                 </SelectTrigger>
                 <SelectContent>
-                  {NIGERIAN_CITIES.map((city) => (
-                    <SelectItem key={city} value={city}>{city}</SelectItem>
+              {NIGERIAN_STATES.map((state) => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
