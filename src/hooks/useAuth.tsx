@@ -31,7 +31,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkCustomerProfile = async (userId: string) => {
     try {
-      const { data } = await supabase.from("customer_profiles").select("id").eq("user_id", userId).maybeSingle();
+      const { data } = await supabase
+        .from("customer_profiles")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
       setCustomerProfileId(data?.id ?? null);
       setHasCustomerProfile(!!data);
     } catch {
@@ -93,14 +97,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Insert customer_profiles row
       if (authData.user) {
-        const { error: profileError } = await supabase.from("customer_profiles").insert({
-          user_id: authData.user.id,
-          full_name: profileData.fullName,
-          email,
-          phone: profileData.phone || null,
-          city: profileData.city || null,
-          referral_code: "SS" + Math.random().toString(36).substring(2, 8).toUpperCase(),
-        });
+        const { error: profileError } = await supabase
+          .from("customer_profiles")
+          .insert({
+            user_id: authData.user.id,
+            full_name: profileData.fullName,
+            email,
+            phone: profileData.phone || null,
+            city: profileData.city || null,
+            referral_code: "SS" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+          });
 
         if (profileError) {
           console.error("Profile creation error:", profileError);

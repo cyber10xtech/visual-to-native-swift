@@ -18,7 +18,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { NIGERIAN_STATES } from "@/lib/validation";
+import { NIGERIAN_CITIES } from "@/lib/validation";
 
 const professionalCategories = [
   { name: "Architect", icon: "architect" },
@@ -214,11 +214,11 @@ const CustomerHome = () => {
                   <label className="text-sm font-medium text-foreground">Location</label>
                   <Select value={locationFilter} onValueChange={setLocationFilter}>
                     <SelectTrigger className="h-12 rounded-xl">
-                      <SelectValue placeholder="Select a state..." />
+                      <SelectValue placeholder="Select a city..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {NIGERIAN_STATES.map(state => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      {NIGERIAN_CITIES.map(city => (
+                        <SelectItem key={city} value={city}>{city}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

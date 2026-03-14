@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -13,18 +13,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const location = useLocation();
   usePermissions();
 
-  const [timedOut, setTimedOut] = useState(false);
-
-  useEffect(() => {
-    if (!loading) {
-      setTimedOut(false);
-      return;
-    }
-    const t = setTimeout(() => setTimedOut(true), 5000);
-    return () => clearTimeout(t);
-  }, [loading]);
-
-  if (loading && !timedOut) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -36,14 +25,9 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/sign-in" state={{ from: location }} replace />;
   }
 
-  // If profile check failed/timed out or explicitly false, redirect to complete-account
-  if (
-    hasCustomerProfile === false ||
-    (timedOut && hasCustomerProfile === null)
-  ) {
-    if (location.pathname !== "/complete-account") {
-      return <Navigate to="/complete-account" replace />;
-    }
+  // If user is authenticated but has no customer_profiles row, redirect to complete-account
+  if (hasCustomerProfile === false && location.pathname !== "/complete-account") {
+    return <Navigate to="/complete-account" replace />;
   }
 
   return <>{children}</>;

@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Star, Heart, MessageSquare, Calendar, Loader2, CheckCircle, Share2, Image, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, MapPin, Star, Heart, MessageSquare, Calendar, Loader2, CheckCircle, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfile } from "@/hooks/useProfile";
 import { useFavorites } from "@/hooks/useFavorites";
 import { supabase } from "@/lib/supabase";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 interface Review {
@@ -15,13 +15,6 @@ interface Review {
   rating: number;
   comment: string | null;
   created_at: string;
-}
-
-interface GalleryImage {
-  id: string;
-  image_url: string;
-  caption: string | null;
-  display_order: number;
 }
 
 const ProfessionalProfile = () => {
@@ -32,15 +25,14 @@ const ProfessionalProfile = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [avgRating, setAvgRating] = useState(0);
   const [proStats, setProStats] = useState<{ jobs: number; rating: number; views: number } | null>(null);
-  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
 
+    // Fetch reviews
     supabase.from("reviews")
       .select("id, rating, comment, created_at")
-      .eq("pro_id", id)
+      .eq("professional_id", id)
       .order("created_at", { ascending: false })
       .limit(10)
       .then(({ data }) => {
@@ -52,21 +44,13 @@ const ProfessionalProfile = () => {
         }
       });
 
+    // Fetch pro stats
     supabase.from("pro_stats")
       .select("jobs, rating, views")
       .eq("pro_id", id)
       .maybeSingle()
       .then(({ data }) => {
         if (data) setProStats(data as any);
-      });
-
-    supabase.from("gallery")
-      .select("id, image_url, caption, display_order")
-      .eq("profile_id", id)
-      .order("display_order", { ascending: true })
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (data) setGalleryImages(data as GalleryImage[]);
       });
   }, [id]);
 
@@ -92,22 +76,6 @@ const ProfessionalProfile = () => {
       await navigator.clipboard.writeText(window.location.href);
       toast.success("Profile link copied!");
     }
-  };
-
-  const navigateLightbox = useCallback((dir: number) => {
-    if (lightboxIndex === null) return;
-    const next = lightboxIndex + dir;
-    if (next >= 0 && next < galleryImages.length) setLightboxIndex(next);
-  }, [lightboxIndex, galleryImages.length]);
-
-  // Swipe support
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const handleTouchStart = (e: React.TouchEvent) => setTouchStart(e.touches[0].clientX);
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStart === null) return;
-    const diff = e.changedTouches[0].clientX - touchStart;
-    if (Math.abs(diff) > 50) navigateLightbox(diff > 0 ? -1 : 1);
-    setTouchStart(null);
   };
 
   if (loading) {
@@ -212,26 +180,6 @@ const ProfessionalProfile = () => {
           </motion.div>
         )}
 
-        {/* Work Gallery */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.22 }} className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Image className="w-4 h-4 text-primary" />
-            <h2 className="font-bold text-foreground">Work Gallery</h2>
-          </div>
-          {galleryImages.length === 0 ? (
-            <p className="text-sm text-muted-foreground/60 italic">No gallery photos yet</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {galleryImages.map((img, i) => (
-                <button key={img.id} onClick={() => setLightboxIndex(i)}
-                  className="aspect-square rounded-xl overflow-hidden border border-border hover:ring-2 hover:ring-primary/30 transition-all">
-                  <img src={img.image_url} alt={img.caption || "Gallery"} className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </motion.div>
-
         {(profile.daily_rate || profile.contract_rate) && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="mb-6">
             <h2 className="font-bold text-foreground mb-2">Rates</h2>
@@ -284,53 +232,6 @@ const ProfessionalProfile = () => {
           </Button>
         </motion.div>
       </div>
-
-      {/* Lightbox Modal */}
-      <AnimatePresence>
-        {lightboxIndex !== null && galleryImages[lightboxIndex] && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-            onClick={() => setLightboxIndex(null)}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-          >
-            <button onClick={() => setLightboxIndex(null)}
-              className="absolute top-4 right-4 z-10 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20">
-              <X className="w-5 h-5" />
-            </button>
-
-            {lightboxIndex > 0 && (
-              <button onClick={(e) => { e.stopPropagation(); navigateLightbox(-1); }}
-                className="absolute left-3 z-10 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20">
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            )}
-
-            {lightboxIndex < galleryImages.length - 1 && (
-              <button onClick={(e) => { e.stopPropagation(); navigateLightbox(1); }}
-                className="absolute right-3 z-10 w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20">
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            )}
-
-            <div className="flex flex-col items-center max-w-[90vw] max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
-              <motion.img
-                key={lightboxIndex}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                src={galleryImages[lightboxIndex].image_url}
-                alt={galleryImages[lightboxIndex].caption || "Gallery"}
-                className="max-w-full max-h-[75vh] object-contain rounded-lg"
-              />
-              {galleryImages[lightboxIndex].caption && (
-                <p className="text-white/80 text-sm mt-3 text-center px-4">{galleryImages[lightboxIndex].caption}</p>
-              )}
-              <p className="text-white/40 text-xs mt-2">{lightboxIndex + 1} / {galleryImages.length}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

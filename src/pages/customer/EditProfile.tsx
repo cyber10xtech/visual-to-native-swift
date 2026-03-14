@@ -10,7 +10,7 @@ import { useCustomerProfile } from "@/hooks/useCustomerProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { NIGERIAN_STATES } from "@/lib/validation";
+import { NIGERIAN_CITIES } from "@/lib/validation";
 import { motion } from "framer-motion";
 
 const EditProfile = () => {
@@ -158,12 +158,12 @@ const EditProfile = () => {
           </div>
 
           <div className="space-y-2">
-            <Label>State</Label>
+            <Label>City</Label>
             <Select value={formData.city} onValueChange={(v) => handleChange("city", v)}>
-              <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select your state" /></SelectTrigger>
+              <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select your city" /></SelectTrigger>
               <SelectContent>
-                {NIGERIAN_STATES.map(state => (
-                  <SelectItem key={state} value={state}>{state}</SelectItem>
+                {NIGERIAN_CITIES.map(city => (
+                  <SelectItem key={city} value={city}>{city}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
