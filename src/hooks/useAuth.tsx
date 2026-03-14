@@ -31,14 +31,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkCustomerProfile = async (userId: string) => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("customer_profiles")
         .select("id")
         .eq("user_id", userId)
         .maybeSingle();
+
+      if (error) {
+        console.error("Profile check error:", error);
+        setHasCustomerProfile(false);
+        setCustomerProfileId(null);
+        return;
+      }
+
       setCustomerProfileId(data?.id ?? null);
-      setHasCustomerProfile(!!data);
-    } catch {
+      setHasCustomerProfile(data !== null);
+    } catch (e) {
+      console.error("Profile check catch:", e);
       setHasCustomerProfile(false);
       setCustomerProfileId(null);
     }
@@ -99,14 +108,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (authData.user) {
         const { error: profileError } = await supabase
           .from("customer_profiles")
-          .insert({
-            user_id: authData.user.id,
-            full_name: profileData.fullName,
-            email,
-            phone: profileData.phone || null,
-            city: profileData.city || null,
-            referral_code: "SS" + Math.random().toString(36).substring(2, 8).toUpperCase(),
-          });
+          .upsert(
+            {
+              user_id: authData.user.id,
+              full_name: profileData.fullName,
+              email,
+              phone: profileData.phone || null,
+              city: profileData.city || null,
+              referral_code: "SS" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+            },
+            { onConflict: "user_id" }
+          );
 
         if (profileError) {
           console.error("Profile creation error:", profileError);
