@@ -114,8 +114,8 @@ const CompleteAccount = () => {
                   <SelectValue placeholder="Select your city" />
                 </SelectTrigger>
                 <SelectContent>
-                  {NIGERIAN_CITIES.map((city) => (
-                    <SelectItem key={city} value={city}>{city}</SelectItem>
+              {NIGERIAN_STATES.map((state) => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
