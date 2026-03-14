@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Loader2, AlertCircle } from "lucide-react";
-import { NIGERIAN_CITIES } from "@/lib/validation";
+import { Loader2, AlertCircle, ArrowLeft, LogOut } from "lucide-react";
+import { NIGERIAN_STATES } from "@/lib/validation";
 import { motion } from "framer-motion";
 import logo from "@/assets/logo.png";
 
