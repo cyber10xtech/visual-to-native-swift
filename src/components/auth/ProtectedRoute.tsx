@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -11,19 +11,16 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading, hasCustomerProfile } = useAuth();
   const location = useLocation();
+  const [timedOut, setTimedOut] = useState(false);
   usePermissions();
 
-  const [timedOut, setTimedOut] = useState(false);
-
   useEffect(() => {
-    if (!loading) {
-      setTimedOut(false);
-      return;
-    }
-    const t = setTimeout(() => setTimedOut(true), 5000);
+    if (!loading) return;
+    const t = setTimeout(() => setTimedOut(true), 6000);
     return () => clearTimeout(t);
   }, [loading]);
 
+  // Still loading and not timed out
   if (loading && !timedOut) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -32,18 +29,23 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
+  // Not logged in
   if (!user) {
     return <Navigate to="/sign-in" state={{ from: location }} replace />;
   }
 
-  // If profile check failed/timed out or explicitly false, redirect to complete-account
-  if (
-    hasCustomerProfile === false ||
-    (timedOut && hasCustomerProfile === null)
-  ) {
-    if (location.pathname !== "/complete-account") {
-      return <Navigate to="/complete-account" replace />;
-    }
+  // Logged in but profile check still running and not timed out
+  if (hasCustomerProfile === null && !timedOut) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // No customer profile row found — send to complete-account
+  if (hasCustomerProfile === false || (timedOut && hasCustomerProfile === null)) {
+    return <Navigate to="/complete-account" replace />;
   }
 
   return <>{children}</>;
