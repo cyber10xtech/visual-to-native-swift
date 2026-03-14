@@ -25,7 +25,9 @@ const CustomerSignIn = () => {
     const result = signInSchema.safeParse({ email, password });
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach(i => { fieldErrors[i.path[0] as string] = i.message; });
+      result.error.issues.forEach((i) => {
+        fieldErrors[i.path[0] as string] = i.message;
+      });
       setErrors(fieldErrors);
       return;
     }
