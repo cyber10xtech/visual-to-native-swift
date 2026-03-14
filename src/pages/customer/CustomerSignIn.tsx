@@ -25,7 +25,9 @@ const CustomerSignIn = () => {
     const result = signInSchema.safeParse({ email, password });
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
-      result.error.issues.forEach(i => { fieldErrors[i.path[0] as string] = i.message; });
+      result.error.issues.forEach((i) => {
+        fieldErrors[i.path[0] as string] = i.message;
+      });
       setErrors(fieldErrors);
       return;
     }
@@ -44,7 +46,7 @@ const CustomerSignIn = () => {
     }
 
     toast.success("Welcome back!");
-    // Navigation handled by auth state change in useAuth
+    navigate("/home");
   };
 
   return (
@@ -55,17 +57,11 @@ const CustomerSignIn = () => {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md bg-card rounded-3xl p-8 shadow-2xl"
       >
-        {/* Animated Logo */}
         <div className="flex flex-col items-center mb-8">
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{
-              type: "spring",
-              stiffness: 200,
-              damping: 15,
-              delay: 0.2,
-            }}
+            transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
           >
             <motion.img
               src={logo}
@@ -99,7 +95,6 @@ const CustomerSignIn = () => {
           </motion.p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSignIn} className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
