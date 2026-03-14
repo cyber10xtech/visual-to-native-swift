@@ -18,7 +18,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { NIGERIAN_CITIES } from "@/lib/validation";
+import { NIGERIAN_STATES } from "@/lib/validation";
 
 const professionalCategories = [
   { name: "Architect", icon: "architect" },
