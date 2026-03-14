@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import { User, Session } from "@supabase/supabase-js";
 
@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   customerProfileId: string | null;
-  hasCustomerProfile: boolean | null;
+  hasCustomerProfile: boolean | null; // null = still checking
   signUp: (email: string, password: string, profileData: CustomerProfileData) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -28,9 +28,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [customerProfileId, setCustomerProfileId] = useState<string | null>(null);
   const [hasCustomerProfile, setHasCustomerProfile] = useState<boolean | null>(null);
-  const initializedRef = useRef(false);
 
-  const checkCustomerProfile = useCallback(async (userId: string) => {
+  const checkCustomerProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from("customer_profiles")
@@ -47,49 +46,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setCustomerProfileId(data?.id ?? null);
       setHasCustomerProfile(data !== null);
-    } catch {
+    } catch (e) {
+      console.error("Profile check catch:", e);
       setHasCustomerProfile(false);
       setCustomerProfileId(null);
     }
-  }, []);
+  };
 
-  const refreshCustomerProfile = useCallback(async () => {
+  const refreshCustomerProfile = async () => {
     if (user) await checkCustomerProfile(user.id);
-  }, [user, checkCustomerProfile]);
+  };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          await checkCustomerProfile(session.user.id);
-        } else {
-          setCustomerProfileId(null);
-          setHasCustomerProfile(null);
-        }
-
-        if (!initializedRef.current) {
-          initializedRef.current = true;
-          setLoading(false);
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        await checkCustomerProfile(session.user.id);
+      } else {
+        setCustomerProfileId(null);
+        setHasCustomerProfile(null);
       }
-    );
+      setLoading(false);
+    });
 
-    // Fallback: stop loading after 4s if auth never fires
-    const fallback = setTimeout(() => {
-      if (!initializedRef.current) {
-        initializedRef.current = true;
-        setLoading(false);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        await checkCustomerProfile(session.user.id);
       }
-    }, 4000);
+      setLoading(false);
+    });
 
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(fallback);
-    };
-  }, [checkCustomerProfile]);
+    return () => subscription.unsubscribe();
+  }, []);
 
   const signUp = async (
     email: string,
@@ -111,18 +104,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) throw error;
 
+      // Insert customer_profiles row
       if (authData.user) {
-        await supabase.from("customer_profiles").upsert(
-          {
-            user_id: authData.user.id,
-            full_name: profileData.fullName,
-            email,
-            phone: profileData.phone || null,
-            city: profileData.city || null,
-            referral_code: "SS" + Math.random().toString(36).substring(2, 8).toUpperCase(),
-          },
-          { onConflict: "user_id" }
-        );
+        const { error: profileError } = await supabase
+          .from("customer_profiles")
+          .upsert(
+            {
+              user_id: authData.user.id,
+              full_name: profileData.fullName,
+              email,
+              phone: profileData.phone || null,
+              city: profileData.city || null,
+              referral_code: "SS" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+            },
+            { onConflict: "user_id" }
+          );
+
+        if (profileError) {
+          console.error("Profile creation error:", profileError);
+        }
       }
 
       return { error: null };
@@ -133,4 +133,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.aut
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setCustomerProfileId(null);
+    setHasCustomerProfile(null);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        customerProfileId,
+        hasCustomerProfile,
+        signUp,
+        signIn,
+        signOut,
+        refreshCustomerProfile,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
