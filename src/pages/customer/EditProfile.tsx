@@ -10,7 +10,7 @@ import { useCustomerProfile } from "@/hooks/useCustomerProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { NIGERIAN_CITIES } from "@/lib/validation";
+import { NIGERIAN_STATES } from "@/lib/validation";
 import { motion } from "framer-motion";
 
 const EditProfile = () => {
