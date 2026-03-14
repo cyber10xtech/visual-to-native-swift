@@ -71,6 +71,15 @@ const CompleteAccount = () => {
         className="w-full max-w-md bg-card rounded-3xl shadow-2xl overflow-hidden"
       >
         <div className="p-8">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground text-sm">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            <button onClick={async () => { await signOut(); navigate("/sign-in", { replace: true }); }}
+              className="flex items-center gap-1 text-muted-foreground hover:text-destructive text-sm">
+              <LogOut className="w-4 h-4" /> Sign Out
+            </button>
+          </div>
           <div className="flex flex-col items-center mb-6">
             <img src={logo} alt="Safesight" className="w-16 h-16 rounded-2xl mb-4 object-contain shadow-lg" />
             <div className="flex items-center gap-2 mb-2">
