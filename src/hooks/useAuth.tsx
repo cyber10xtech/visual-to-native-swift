@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import { User, Session } from "@supabase/supabase-js";
 
@@ -28,9 +28,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [customerProfileId, setCustomerProfileId] = useState<string | null>(null);
   const [hasCustomerProfile, setHasCustomerProfile] = useState<boolean | null>(null);
-  const initializedRef = useRef(false);
 
-  const checkCustomerProfile = useCallback(async (userId: string) => {
+  const checkCustomerProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase.from("customer_profiles").select("id").eq("user_id", userId).maybeSingle();
 
@@ -47,44 +46,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setHasCustomerProfile(false);
       setCustomerProfileId(null);
     }
-  }, []);
+  };
 
-  const refreshCustomerProfile = useCallback(async () => {
+  const refreshCustomerProfile = async () => {
     if (user) await checkCustomerProfile(user.id);
-  }, [user, checkCustomerProfile]);
+  };
 
   useEffect(() => {
+    // Get existing session first so there's no flash
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        await checkCustomerProfile(session.user.id);
+      } else {
+        setHasCustomerProfile(null);
+      }
+      setLoading(false);
+    });
+
+    // Then listen for changes (login, logout, token refresh)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-
       if (session?.user) {
         await checkCustomerProfile(session.user.id);
       } else {
         setCustomerProfileId(null);
         setHasCustomerProfile(null);
       }
-
-      if (!initializedRef.current) {
-        initializedRef.current = true;
-        setLoading(false);
-      }
+      setLoading(false);
     });
 
-    const fallback = setTimeout(() => {
-      if (!initializedRef.current) {
-        initializedRef.current = true;
-        setLoading(false);
-      }
-    }, 3000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(fallback);
-    };
-  }, [checkCustomerProfile]);
+    return () => subscription.unsubscribe();
+  }, []);
 
   const signUp = async (
     email: string,
