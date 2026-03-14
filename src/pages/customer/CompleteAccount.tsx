@@ -108,10 +108,10 @@ const CompleteAccount = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
+              <Label htmlFor="city">State</Label>
               <Select value={formData.city} onValueChange={(v) => handleChange("city", v)}>
                 <SelectTrigger className="h-12 rounded-xl">
-                  <SelectValue placeholder="Select your city" />
+                  <SelectValue placeholder="Select your state" />
                 </SelectTrigger>
                 <SelectContent>
               {NIGERIAN_STATES.map((state) => (

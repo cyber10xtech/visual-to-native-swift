@@ -158,12 +158,12 @@ const EditProfile = () => {
           </div>
 
           <div className="space-y-2">
-            <Label>City</Label>
+            <Label>State</Label>
             <Select value={formData.city} onValueChange={(v) => handleChange("city", v)}>
-              <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select your city" /></SelectTrigger>
+              <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Select your state" /></SelectTrigger>
               <SelectContent>
-                {NIGERIAN_CITIES.map(city => (
-                  <SelectItem key={city} value={city}>{city}</SelectItem>
+                {NIGERIAN_STATES.map(state => (
+                  <SelectItem key={state} value={state}>{state}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
