@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, useRef, useCallback, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
 import { User, Session } from "@supabase/supabase-js";
 
@@ -30,13 +30,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [hasCustomerProfile, setHasCustomerProfile] = useState<boolean | null>(null);
   const initializedRef = useRef(false);
 
-  const checkCustomerProfile = async (userId: string) => {
+  const checkCustomerProfile = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("customer_profiles")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const { data, error } = await supabase.from("customer_profiles").select("id").eq("user_id", userId).maybeSingle();
 
       if (error) {
         console.error("Profile check error:", error);
@@ -51,13 +47,124 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setHasCustomerProfile(false);
       setCustomerProfileId(null);
     }
-  };
+  }, []);
 
-  const refreshCustomerProfile = async () => {
+  const refreshCustomerProfile = useCallback(async () => {
     if (user) await checkCustomerProfile(user.id);
-  };
+  }, [user, checkCustomerProfile]);
 
   useEffect(() => {
-    // Listen for auth changes — this fires immediately with the current session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        await checkCustomerProfile(session.user.id);
+      } else {
+        setCustomerProfileId(null);
+        setHasCustomerProfile(null);
+      }
+
+      if (!initializedRef.current) {
+        initializedRef.current = true;
+        setLoading(false);
+      }
+    });
+
+    const fallback = setTimeout(() => {
+      if (!initializedRef.current) {
+        initializedRef.current = true;
+        setLoading(false);
+      }
+    }, 3000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(fallback);
+    };
+  }, [checkCustomerProfile]);
+
+  const signUp = async (
+    email: string,
+    password: string,
+    profileData: CustomerProfileData,
+  ): Promise<{ error: Error | null }> => {
+    try {
+      const { data: authData, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/home`,
+          data: {
+            full_name: profileData.fullName,
+            account_type: "customer",
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (authData.user) {
+        await supabase.from("customer_profiles").upsert(
+          {
+            user_id: authData.user.id,
+            full_name: profileData.fullName,
+            email,
+            phone: profileData.phone || null,
+            city: profileData.city || null,
+            referral_code: "SS" + Math.random().toString(36).substring(2, 8).toUpperCase(),
+          },
+          { onConflict: "user_id" },
+        );
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setCustomerProfileId(null);
+    setHasCustomerProfile(null);
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        customerProfileId,
+        hasCustomerProfile,
+        signUp,
+        signIn,
+        signOut,
+        refreshCustomerProfile,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
