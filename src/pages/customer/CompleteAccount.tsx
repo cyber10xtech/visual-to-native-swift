@@ -14,7 +14,7 @@ import logo from "@/assets/logo.png";
 
 const CompleteAccount = () => {
   const navigate = useNavigate();
-  const { user, refreshCustomerProfile } = useAuth();
+  const { user, refreshCustomerProfile, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: user?.user_metadata?.full_name || "",
